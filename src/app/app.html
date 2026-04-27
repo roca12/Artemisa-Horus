@@ -1,6 +1,6 @@
 <div class="container">
   <header>
-    <h1>{{ title() }}</h1>
+    <h1><i class="fas fa-eye"></i> {{ title() }}</h1>
     <div class="repo-banner">
       <p>Repositorio: <a href="https://github.com/roca12/GPC-UEB-Repo" target="_blank"><i class="fab fa-github"></i> roca12/GPC-UEB-Repo</a></p>
     </div>
@@ -148,17 +148,17 @@
             <table>
               <thead>
                 <tr>
-                  <th class="col-num">#</th>
+                  <th class="col-num hide-mobile">#</th>
                   <th><i class="fas fa-calendar"></i> Semana</th>
                   <th><i class="fas fa-check-double"></i> Estado</th>
-                  <th><i class="fas fa-file-code"></i> Nuevos Aportes</th>
+                  <th class="hide-mobile"><i class="fas fa-file-code"></i> Nuevos Aportes</th>
                   <th><i class="fas fa-exclamation-circle"></i> Deuda</th>
                   <th><i class="fas fa-list-ul"></i> Actividad</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let week of getFilteredWeeklyStats(); let i = index">
-                  <td class="col-num">{{ i + 1 }}</td>
+                  <td class="col-num hide-mobile">{{ i + 1 }}</td>
                   <td><strong>{{ week.weekStart | date:'dd/MM/yyyy' }}</strong></td>
                   <td>
                     <span *ngIf="week.isGoalMet" class="status-icon success" title="Meta cumplida">
@@ -168,7 +168,7 @@
                       <i class="fas fa-times-circle"></i>
                     </span>
                   </td>
-                  <td>{{ week.count }} archivos</td>
+                  <td class="hide-mobile">{{ week.count }} archivos</td>
                   <td>
                     <span [class.text-danger]="week.debt > 0">
                       {{ week.debt > 0 ? week.debt + ' ejercicios' : '-' }}

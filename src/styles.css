@@ -81,6 +81,16 @@ header h1 {
   font-weight: 800;
   letter-spacing: -1px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+header h1 i {
+  font-size: 3.5rem;
+  color: var(--header-text);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 header p {
@@ -175,6 +185,9 @@ section h2 {
   color: var(--primary-color);
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 15px;
+  line-height: 1.2;
 }
 
 /* Loading Spinner */
@@ -238,7 +251,12 @@ section h2 {
   background: var(--tab-header-bg);
   overflow-x: auto;
   border-bottom: 1px solid var(--border-color);
-  scrollbar-width: thin;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.tabs-header::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .tab-btn {
@@ -456,6 +474,7 @@ section h2 {
   overflow-x: auto;
   border: 1px solid var(--border-color);
   border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -809,19 +828,146 @@ tr:hover td {
 
 @media (max-width: 768px) {
   .container {
-    padding: 20px 15px;
+    padding: 20px 10px;
+  }
+
+  header {
+    padding: 2rem 1rem;
+    margin-bottom: 1.5rem;
   }
 
   header h1 {
-    font-size: 2rem;
+    font-size: 2.2rem;
+    margin-top: 30px; /* Espacio para los botones flotantes */
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  header h1 i {
+    font-size: 2.5rem;
+  }
+
+  .header-actions {
+    top: 10px;
+    right: 10px;
+  }
+
+  .theme-toggle-btn, .admin-toggle-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 1rem;
+  }
+
+  .repo-banner {
+    padding: 6px 15px;
+    font-size: 0.9rem;
+  }
+
+  section h2 {
+    font-size: 1.5rem;
   }
 
   .tab-btn {
-    padding: 15px;
+    padding: 12px 15px;
+    font-size: 0.9rem;
   }
 
   .tab-content {
-    padding: 1.5rem;
+    padding: 1.2rem;
+  }
+
+  .stats-summary {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .author-list {
+    grid-template-columns: 1fr;
+  }
+
+  .table-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    min-width: 0;
+  }
+
+  .filter-box {
+    justify-content: space-between;
+  }
+
+  .filter-box select {
+    flex: 1;
+  }
+
+  th, td {
+    padding: 12px 10px;
+    font-size: 0.85rem;
+  }
+
+  .col-num {
+    display: none; /* Ocultar numeración en pantallas muy pequeñas para ganar espacio */
+  }
+
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .modal-content {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    padding: 1rem;
+  }
+
+  .modal-footer {
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-download {
+    width: 100%;
+    order: 2;
+    margin-right: 0;
+  }
+
+  .btn-primary, .btn-secondary {
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  header h1 {
+    font-size: 1.8rem;
+  }
+
+  header h1 i {
+    font-size: 2rem;
+  }
+
+  section h2 {
+    font-size: 1.3rem;
+    gap: 10px;
+    line-height: 1.2;
+  }
+
+  .contributor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-header h3 {
+    font-size: 1.1rem;
+    flex-wrap: wrap;
+  }
+
+  .header-avatar, .stats-header i {
+    width: 40px;
+    height: 40px;
+    font-size: 2rem;
   }
 }
 
@@ -888,15 +1034,9 @@ tr:hover td {
   font-size: 1.2rem;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-}
-
-.competitors-column h3 i {
-  display: flex;
-  align-items: center;
   justify-content: center;
-  line-height: 1;
+  gap: 10px;
+  line-height: 1.2;
 }
 
 .contributor-grid {
@@ -930,6 +1070,10 @@ tr:hover td {
 
 .contributor-card.failed {
   border-left: 4px solid var(--danger-color);
+}
+
+.contributor-card.active.failed {
+  border-left-color: var(--danger-color);
 }
 
 .contributor-card i {
