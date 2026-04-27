@@ -111,18 +111,21 @@ export class App implements OnInit, OnDestroy {
 
     // Cargar contribuidores ocultos
     const savedHidden = localStorage.getItem('github_hidden_contributors');
-    const copilotLogins = ['github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]'];
+    const excludedLogins = [
+      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
+      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+    ];
 
     if (savedHidden) {
       this.hiddenContributors = JSON.parse(savedHidden);
-      // Asegurarse de que copilot esté siempre oculto
-      copilotLogins.forEach(login => {
+      // Asegurarse de que los excluidos estén siempre ocultos
+      excludedLogins.forEach(login => {
         if (!this.hiddenContributors.includes(login)) {
           this.hiddenContributors.push(login);
         }
       });
     } else {
-      this.hiddenContributors = [...copilotLogins];
+      this.hiddenContributors = [...excludedLogins];
     }
   }
 
@@ -153,13 +156,20 @@ export class App implements OnInit, OnDestroy {
     this.loadingProgress = 0;
     this.error = null;
     const folderPath = 'Resueltos por competidor';
-    const copilotLogins = ['github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]'];
+    const excludedLogins = [
+      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
+      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+    ];
 
     forkJoin({
       generalCommits: this.githubService.getCommits(),
       folderCommits: this.githubService.getCommitsByPath(folderPath),
-      allContributors: this.githubService.getContributors().pipe(
-        map(contributors => contributors.filter(c => !copilotLogins.includes(c.login) && !(c.login && c.login.toLowerCase().includes('copilot'))))
+      allContributors: this.githubService.getCollaborators().pipe(
+        map(collaborators => collaborators.filter(c =>
+          c.permissions?.push &&
+          !excludedLogins.includes(c.login) &&
+          !(c.login && c.login.toLowerCase().includes('copilot'))
+        ))
       )
     }).subscribe({
       next: (data) => {
@@ -242,7 +252,10 @@ export class App implements OnInit, OnDestroy {
 
   private processCommits(commits: GithubCommit[]) {
     const weeks: { [key: string]: WeekStats } = {};
-    const copilotLogins = ['github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]'];
+    const excludedLogins = [
+      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
+      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+    ];
 
     const startDate = new Date(2026, 3, 20);
     commits.forEach(c => {
@@ -266,8 +279,8 @@ export class App implements OnInit, OnDestroy {
 
       const author = c.author?.login || c.commit.author.name;
 
-      // Omitir copilot y otros bots
-      if (copilotLogins.includes(author) || (author && author.toLowerCase().includes('copilot'))) return;
+      // Omitir excluidos, copilot y otros bots
+      if (excludedLogins.includes(author) || (author && author.toLowerCase().includes('copilot'))) return;
 
       weeks[weekKey].commitsCount++;
       weeks[weekKey].authors[author] = (weeks[weekKey].authors[author] || 0) + 1;
@@ -279,16 +292,20 @@ export class App implements OnInit, OnDestroy {
   private processFolderContributors(commits: GithubCommit[], allGitHubContributors: any[] = []) {
     const contributorsData: { [login: string]: { [weekKey: string]: { messages: string[], files: string[] } } } = {};
 
-    // Inicializar datos para TODOS los contribuidores de GitHub (si no están ocultos)
+    // Inicializar datos para TODOS los colaboradores de GitHub (si no están ocultos)
     allGitHubContributors.forEach(c => {
-      if (!this.hiddenContributors.includes(c.login)) {
-        contributorsData[c.login] = {};
+      const login = c.login;
+      if (login && !this.hiddenContributors.includes(login)) {
+        contributorsData[login] = {};
       }
     });
 
     // Determinar la semana actual y la primera semana de interés
     const now = new Date();
-    const copilotLogins = ['github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]'];
+    const excludedLogins = [
+      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
+      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+    ];
     const currentWeekStart = this.getStartOfWeek(now);
     const startDate = new Date(2026, 3, 20);
     const firstWeekStart = this.getStartOfWeek(startDate);
@@ -326,15 +343,15 @@ export class App implements OnInit, OnDestroy {
 
       // Si el autor está oculto o es copilot (o bot), ignorar
       if (this.hiddenContributors.includes(author) ||
-          copilotLogins.includes(author) ||
+          excludedLogins.includes(author) ||
           (author && author.toLowerCase().includes('copilot'))) return;
-
-      const weekStart = this.getStartOfWeek(date);
-      const weekKey = weekStart.toISOString().split('T')[0];
 
       if (!contributorsData[author]) {
         contributorsData[author] = {};
       }
+      const weekStart = this.getStartOfWeek(date);
+      const weekKey = weekStart.toISOString().split('T')[0];
+
       if (!contributorsData[author][weekKey]) {
         contributorsData[author][weekKey] = { messages: [], files: [] };
       }
