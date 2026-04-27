@@ -1,5 +1,7 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef } from '@angular/core';
 import { GithubService, GithubCommit } from './github.service';
+import { forkJoin, Subscription, interval } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 interface WeekStats {
   weekStart: Date;
@@ -7,45 +9,128 @@ interface WeekStats {
   authors: { [login: string]: number };
 }
 
+interface ContributorWeekStats {
+  weekStart: Date;
+  count: number;
+  diff: number;
+  messages: string[];
+  files: string[];
+}
+
 interface ContributorInfo {
   login: string;
-  filesCount: number;
-  files: string[];
+  totalFiles: number;
+  weeklyStats: ContributorWeekStats[];
 }
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.html',
-  standalone: false,
-  styleUrl: './app.css'
+  standalone: false
 })
-export class App implements OnInit {
-  protected readonly title = signal('Analizador de GPC-UEB-Repo');
+export class App implements OnInit, OnDestroy {
+  protected readonly title = signal('GPC - Horus');
 
   commitsByWeek: WeekStats[] = [];
   contributorsInFolder: ContributorInfo[] = [];
+  selectedContributor: string | null = null;
   loading = true;
+  loadingProgress = 0;
   error: string | null = null;
+  private refreshSubscription?: Subscription;
 
-  constructor(private githubService: GithubService) {}
+  constructor(private githubService: GithubService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.loadData();
+    // Configurar recarga automática cada 5 minutos
+    this.refreshSubscription = interval(5 * 60 * 1000).subscribe(() => {
+      console.log('Recargando datos automáticamente...');
+      this.loadData();
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.refreshSubscription) {
+      this.refreshSubscription.unsubscribe();
+    }
   }
 
   loadData() {
+    console.log('Iniciando carga de datos...');
     this.loading = true;
-    this.githubService.getCommits().subscribe({
-      next: (commits) => {
-        this.processCommits(commits);
-        this.loadFolderContributors();
+    this.loadingProgress = 0;
+    this.error = null;
+    const folderPath = 'Resueltos por competidor';
+
+    forkJoin({
+      generalCommits: this.githubService.getCommits(),
+      folderCommits: this.githubService.getCommitsByPath(folderPath)
+    }).subscribe({
+      next: (data) => {
+        console.log('Datos recibidos correctamente:', data);
+        this.loadingProgress = 20; // 20% tras la primera carga
+
+        // Filtrar commits de 2026 para reducir las peticiones de detalle
+        const recentFolderCommits = data.folderCommits.filter(c => new Date(c.commit.author.date).getFullYear() >= 2026);
+
+        if (recentFolderCommits.length > 0) {
+          const totalDetails = recentFolderCommits.length;
+          let completedDetails = 0;
+
+          // Obtener detalles de cada commit para saber qué archivos se modificaron
+          const detailRequests = recentFolderCommits.map(c =>
+            this.githubService.getCommitDetail(c.sha).pipe(
+              map(detail => {
+                completedDetails++;
+                // El progreso de detalles va del 20% al 90%
+                this.loadingProgress = 20 + Math.round((completedDetails / totalDetails) * 70);
+                return detail;
+              })
+            )
+          );
+
+          forkJoin(detailRequests).subscribe({
+            next: (detailedCommits) => {
+              this.processCommits(data.generalCommits);
+              this.processFolderContributors(detailedCommits);
+
+              if (this.contributorsInFolder.length > 0) {
+                this.selectedContributor = this.contributorsInFolder[0].login;
+              }
+              this.loadingProgress = 100;
+              this.loading = false;
+              this.cdr.detectChanges();
+            },
+            error: (err) => this.handleError(err)
+          });
+        } else {
+          this.processCommits(data.generalCommits);
+          this.processFolderContributors([]);
+          this.loadingProgress = 100;
+          this.loading = false;
+          this.cdr.detectChanges();
+        }
       },
-      error: (err) => {
-        this.error = 'Error al cargar los commits';
-        this.loading = false;
-        console.error(err);
+      error: (err) => this.handleError(err),
+      complete: () => {
+        console.log('Suscripción a forkJoin inicial completada.');
       }
     });
+  }
+
+  private handleError(err: any) {
+    console.error('Error detectado:', err);
+    if (err.status === 401) {
+      this.error = 'Error de autenticación: El Token de GitHub es inválido o ha expirado.';
+    } else if (err.status === 403) {
+      this.error = 'Límite de la API de GitHub alcanzado o acceso prohibido.';
+    } else if (err.status === 404) {
+      this.error = 'No se encontró el repositorio o la carpeta especificada.';
+    } else {
+      this.error = `Error al cargar los datos: ${err.message || 'Error desconocido'}`;
+    }
+    this.loading = false;
   }
 
   private processCommits(commits: GithubCommit[]) {
@@ -53,6 +138,12 @@ export class App implements OnInit {
 
     commits.forEach(c => {
       const date = new Date(c.commit.author.date);
+
+      // Solo incluir commits de 2026 en adelante
+      if (date.getFullYear() < 2026) {
+        return;
+      }
+
       const weekStart = this.getStartOfWeek(date);
       const weekKey = weekStart.toISOString().split('T')[0];
 
@@ -72,46 +163,80 @@ export class App implements OnInit {
     this.commitsByWeek = Object.values(weeks).sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
   }
 
-  private loadFolderContributors() {
-    const folderPath = 'Resueltos por competidor';
-    this.githubService.getFolderContents(folderPath).subscribe({
-      next: (contents) => {
-        // Para cada archivo en la carpeta, necesitamos saber quién lo agregó
-        // La API de contents no lo dice directamente, pero podemos ver los commits para esa ruta
-        const contributorsMap: { [login: string]: Set<string> } = {};
+  private processFolderContributors(commits: GithubCommit[]) {
+    const contributorsData: { [login: string]: { [weekKey: string]: { messages: string[], files: string[] } } } = {};
 
-        // Esta es una aproximación. Para ser precisos tendríamos que pedir los commits por cada archivo
-        // Pero eso son muchas peticiones. Vamos a pedir los commits de la carpeta.
-        this.githubService.getCommitsByPath(folderPath).subscribe({
-          next: (commits) => {
-             commits.forEach(commit => {
-               const author = commit.author?.login || commit.commit.author.name;
-               if (!contributorsMap[author]) {
-                 contributorsMap[author] = new Set<string>();
-               }
-               // El mensaje del commit suele decir qué se agregó
-               contributorsMap[author].add(commit.commit.message);
-             });
+    commits.forEach(commit => {
+      const date = new Date(commit.commit.author.date);
 
-             this.contributorsInFolder = Object.entries(contributorsMap).map(([login, files]) => ({
-               login,
-               filesCount: files.size,
-               files: Array.from(files)
-             })).sort((a, b) => b.filesCount - a.filesCount);
-
-             this.loading = false;
-          },
-          error: (err) => {
-            console.error('Error al obtener commits de la carpeta', err);
-            this.loading = false;
-          }
-        });
-      },
-      error: (err) => {
-        console.error('Error al obtener contenido de la carpeta', err);
-        this.loading = false;
+      // Solo incluir commits de 2026 en adelante
+      if (date.getFullYear() < 2026) {
+        return;
       }
+
+      // Filtrar archivos java, cpp, python y excluir eliminaciones
+      const relevantFiles = (commit.files || [])
+        .filter(f => f.status !== 'removed')
+        .map(f => f.filename)
+        .filter(name => {
+          const lower = name.toLowerCase();
+          return lower.endsWith('.java') || lower.endsWith('.cpp') || lower.endsWith('.py');
+        });
+
+      // Si el commit no tiene archivos relevantes en los lenguajes solicitados, podemos elegir ignorarlo
+      // o simplemente registrar el commit con lista de archivos vacía. El usuario dijo "solo tener en cuenta los archivos java, cpp y python"
+      if (relevantFiles.length === 0) return;
+
+      const author = commit.author?.login || commit.commit.author.name;
+      const weekStart = this.getStartOfWeek(date);
+      const weekKey = weekStart.toISOString().split('T')[0];
+
+      if (!contributorsData[author]) {
+        contributorsData[author] = {};
+      }
+      if (!contributorsData[author][weekKey]) {
+        contributorsData[author][weekKey] = { messages: [], files: [] };
+      }
+
+      contributorsData[author][weekKey].messages.push(commit.commit.message);
+      relevantFiles.forEach(file => {
+        if (!contributorsData[author][weekKey].files.includes(file)) {
+          contributorsData[author][weekKey].files.push(file);
+        }
+      });
     });
+
+    this.contributorsInFolder = Object.entries(contributorsData).map(([login, weeksData]) => {
+      const weeklyStats: ContributorWeekStats[] = Object.entries(weeksData).map(([weekKey, data]) => ({
+        weekStart: new Date(weekKey),
+        count: data.files.length, // Usamos la cantidad de archivos únicos como "aportes"
+        diff: 0,
+        messages: data.messages,
+        files: data.files
+      })).sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
+
+      // Calcular diferencias
+      for (let i = 0; i < weeklyStats.length - 1; i++) {
+        weeklyStats[i].diff = weeklyStats[i].count - weeklyStats[i + 1].count;
+      }
+      if (weeklyStats.length > 0) {
+        weeklyStats[weeklyStats.length - 1].diff = weeklyStats[weeklyStats.length - 1].count;
+      }
+
+      return {
+        login,
+        totalFiles: weeklyStats.reduce((sum, week) => sum + week.count, 0),
+        weeklyStats
+      };
+    }).sort((a, b) => b.totalFiles - a.totalFiles);
+  }
+
+  selectContributor(login: string) {
+    this.selectedContributor = login;
+  }
+
+  getSelectedContributorStats(): ContributorInfo | undefined {
+    return this.contributorsInFolder.find(c => c.login === this.selectedContributor);
   }
 
   private getStartOfWeek(date: Date): Date {

@@ -2,18 +2,27 @@
   <header>
     <h1>{{ title() }}</h1>
     <p>Repositorio: <a href="https://github.com/roca12/GPC-UEB-Repo" target="_blank">roca12/GPC-UEB-Repo</a></p>
+
+    <div class="header-actions">
+    </div>
   </header>
 
-  <div *ngIf="loading" class="loading">
-    Cargando datos del repositorio...
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando datos del repositorio... {{ loadingProgress }}%</p>
+    <div class="progress-bar-container">
+      <div class="progress-bar" [style.width.%]="loadingProgress"></div>
+    </div>
+    <small>Consultando API de GitHub...</small>
   </div>
 
-  <div *ngIf="error" class="error">
-    {{ error }}
+  <div *ngIf="error" class="error-container">
+    <div class="error">{{ error }}</div>
+    <button (click)="loadData()" class="retry-btn">Reintentar</button>
   </div>
 
   <div *ngIf="!loading && !error">
-    <section>
+    <section *ngIf="commitsByWeek.length > 0; else noCommits">
       <h2>Commits por Semana</h2>
       <div class="card-grid">
         <div *ngFor="let week of commitsByWeek" class="card">
@@ -27,31 +36,83 @@
         </div>
       </div>
     </section>
+    <ng-template #noCommits>
+      <section>
+        <h2>Commits por Semana</h2>
+        <p class="no-data">No se encontraron commits desde enero de 2026.</p>
+      </section>
+    </ng-template>
 
-    <section>
-      <h2>Colaboradores en "Resueltos por competidor"</h2>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Colaborador</th>
-              <th>Archivos/Aportes Únicos</th>
-              <th>Actividad reciente</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let contributor of contributorsInFolder">
-              <td><strong>{{ contributor.login }}</strong></td>
-              <td>{{ contributor.filesCount }}</td>
-              <td>
-                <small *ngFor="let file of contributor.files; let last = last">
-                  {{ file }}{{ !last ? ', ' : '' }}
-                </small>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <section *ngIf="contributorsInFolder.length > 0; else noContributors">
+      <h2>Actividad por Competidor en "Resueltos por competidor"</h2>
+
+      <div class="tabs-container">
+        <div class="tabs-header">
+          <button
+            *ngFor="let contributor of contributorsInFolder"
+            [class.active]="selectedContributor === contributor.login"
+            (click)="selectContributor(contributor.login)"
+            class="tab-btn"
+          >
+            {{ contributor.login }}
+            <span class="badge">{{ contributor.totalFiles }}</span>
+          </button>
+        </div>
+
+        <div class="tab-content" *ngIf="getSelectedContributorStats() as selected">
+          <div class="stats-header">
+            <h3>Estadísticas de {{ selected.login }}</h3>
+            <p>Total de archivos/aportes desde 2026: <strong>{{ selected.totalFiles }}</strong></p>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Semana</th>
+                  <th>Nuevos Aportes</th>
+                  <th>Diferencia (vs sem. ant.)</th>
+                  <th>Mensajes de actividad</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let week of selected.weeklyStats">
+                  <td><strong>{{ week.weekStart | date:'dd/MM/yyyy' }}</strong></td>
+                  <td>{{ week.count }} archivos</td>
+                  <td>
+                    <span [class.text-success]="week.diff > 0" [class.text-danger]="week.diff < 0">
+                      {{ week.diff > 0 ? '+' : '' }}{{ week.diff }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="activity-details">
+                      <details *ngIf="week.files.length > 0">
+                        <summary><strong>Archivos ({{ week.files.length }})</strong></summary>
+                        <ul class="file-list">
+                          <li *ngFor="let file of week.files">{{ file }}</li>
+                        </ul>
+                      </details>
+
+                      <details *ngIf="week.messages.length > 0">
+                        <summary><strong>Commits ({{ week.messages.length }})</strong></summary>
+                        <ul class="activity-list">
+                          <li *ngFor="let msg of week.messages">{{ msg }}</li>
+                        </ul>
+                      </details>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </section>
+    <ng-template #noContributors>
+      <section>
+        <h2>Colaboradores en "Resueltos por competidor"</h2>
+        <p class="no-data">No hay aportes registrados en esta carpeta desde enero de 2026.</p>
+      </section>
+    </ng-template>
   </div>
 </div>
