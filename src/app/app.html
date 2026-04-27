@@ -4,6 +4,9 @@
     <p>Repositorio: <a href="https://github.com/roca12/GPC-UEB-Repo" target="_blank"><i class="fab fa-github"></i> roca12/GPC-UEB-Repo</a></p>
 
     <div class="header-actions">
+      <button (click)="toggleTheme()" class="theme-toggle-btn" [title]="isDarkMode() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
+        <i class="fas" [ngClass]="isDarkMode() ? 'fa-sun' : 'fa-moon'"></i>
+      </button>
     </div>
   </header>
 
@@ -23,7 +26,7 @@
 
   <div *ngIf="!loading && !error">
     <section *ngIf="commitsByWeek.length > 0; else noCommits">
-      <h2><i class="fas fa-calendar-week"></i> Commits por Semana</h2>
+      <h2>  Commits por Semana</h2>
 
       <div class="tabs-container">
         <div class="tabs-header">
@@ -61,7 +64,7 @@
     </section>
     <ng-template #noCommits>
       <section>
-        <h2><i class="fas fa-calendar-week"></i> Commits por Semana</h2>
+        <h2><i class="fas fa-code-commit"></i> Commits por Semana</h2>
         <p class="no-data"><i class="fas fa-info-circle"></i> No se encontraron commits desde enero de 2026.</p>
       </section>
     </ng-template>
@@ -112,7 +115,13 @@
                       <details *ngIf="week.files.length > 0">
                         <summary><strong><i class="fas fa-files"></i> Archivos ({{ week.files.length }})</strong></summary>
                         <ul class="file-list">
-                          <li *ngFor="let file of week.files"><i class="fas fa-file-alt"></i> {{ file }}</li>
+                          <li *ngFor="let file of week.files" class="file-item">
+                            <i class="fas fa-file-alt"></i>
+                            <span class="file-name">{{ file }}</span>
+                            <button class="view-code-btn" (click)="viewFileCode(file)" title="Ver código">
+                              <i class="fas fa-eye"></i>
+                            </button>
+                          </li>
                         </ul>
                       </details>
 
@@ -137,5 +146,24 @@
         <p class="no-data"><i class="fas fa-info-circle"></i> No hay aportes registrados en esta carpeta desde enero de 2026.</p>
       </section>
     </ng-template>
+  </div>
+
+  <!-- Modal para ver código -->
+  <div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-file-code"></i> {{ selectedFileName }}</h3>
+        <button class="close-btn" (click)="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="loadingCode" class="modal-loading">
+          <i class="fas fa-spinner fa-spin"></i> Cargando contenido...
+        </div>
+        <pre *ngIf="!loadingCode" class="code-block"><code>{{ fileCode }}</code></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" (click)="closeModal()">Cerrar</button>
+      </div>
+    </div>
   </div>
 </div>

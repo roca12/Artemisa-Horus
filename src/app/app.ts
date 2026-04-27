@@ -35,20 +35,55 @@ export class App implements OnInit, OnDestroy {
   selectedWeek: string | null = null;
   contributorsInFolder: ContributorInfo[] = [];
   selectedContributor: string | null = null;
+  isDarkMode = signal(false);
   loading = true;
   loadingProgress = 0;
   error: string | null = null;
+
+  // Modal para ver código
+  showModal = false;
+  fileCode = '';
+  selectedFileName = '';
+  loadingCode = false;
+
   private refreshSubscription?: Subscription;
 
   constructor(private githubService: GithubService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
+    this.initTheme();
     this.loadData();
     // Configurar recarga automática cada 5 minutos
     this.refreshSubscription = interval(5 * 60 * 1000).subscribe(() => {
       console.log('Recargando datos automáticamente...');
       this.loadData();
     });
+  }
+
+  initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      this.setDarkMode(true);
+    } else {
+      this.setDarkMode(false);
+    }
+  }
+
+  toggleTheme() {
+    this.setDarkMode(!this.isDarkMode());
+  }
+
+  private setDarkMode(isDark: boolean) {
+    this.isDarkMode.set(isDark);
+    if (isDark) {
+      document.body.classList.add('dark-theme');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.body.classList.remove('dark-theme');
+      localStorage.setItem('theme', 'light');
+    }
   }
 
   ngOnDestroy() {
@@ -269,5 +304,43 @@ export class App implements OnInit, OnDestroy {
 
   getAuthorKeys(authors: { [key: string]: number }): string[] {
     return Object.keys(authors);
+  }
+
+  viewFileCode(path: string) {
+    this.selectedFileName = path.split('/').pop() || path;
+    this.showModal = true;
+    this.loadingCode = true;
+    this.fileCode = '';
+
+    this.githubService.getFileContent(path).subscribe({
+      next: (data: any) => {
+        try {
+          // GitHub devuelve el contenido en base64
+          // Usar decodificación compatible con UTF-8
+          const binaryString = atob(data.content.replace(/\s/g, ''));
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          this.fileCode = new TextDecoder('utf-8').decode(bytes);
+          this.loadingCode = false;
+          this.cdr.detectChanges();
+        } catch (e) {
+          this.fileCode = 'Error al decodificar el contenido del archivo.';
+          this.loadingCode = false;
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => {
+        this.fileCode = 'Error al cargar el archivo: ' + (err.message || 'Desconocido');
+        this.loadingCode = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  closeModal() {
+    this.showModal = false;
+    this.fileCode = '';
   }
 }

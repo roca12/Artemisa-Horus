@@ -68,4 +68,8 @@ export class GithubService {
   getCommitDetail(sha: string): Observable<GithubCommit> {
     return this.http.get<GithubCommit>(`${this.baseUrl}/${this.owner}/${this.repo}/commits/${sha}`, this.getHeaders());
   }
+
+  getFileContent(path: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`, this.getHeaders());
+  }
 }
