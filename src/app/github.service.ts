@@ -76,4 +76,8 @@ export class GithubService {
   getContributors(): Observable<any[]> {
     return this.http.get<any[]>(`${this.baseUrl}/${this.owner}/${this.repo}/contributors`, this.getHeaders());
   }
+
+  getCollaborators(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/${this.owner}/${this.repo}/collaborators`, this.getHeaders());
+  }
 }

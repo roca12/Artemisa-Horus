@@ -46,14 +46,21 @@ export class Admin implements OnInit {
   }
 
   loadContributors() {
-    const copilotLogins = ['github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]'];
-    this.githubService.getContributors().subscribe({
+    const excludedLogins = [
+      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
+      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+    ];
+    this.githubService.getCollaborators().subscribe({
       next: (data) => {
-        // Filtrar copilot y otros bots de la lista de contribuidores para que ni siquiera aparezcan en el admin
-        const filtered = data.filter(c => !copilotLogins.includes(c.login) && !(c.login && c.login.toLowerCase().includes('copilot')));
+        // Filtrar aquellos que tengan permisos de push y no sean bots ni usuarios excluidos
+        const filtered = data.filter(c =>
+          c.permissions?.push &&
+          !excludedLogins.includes(c.login) &&
+          !(c.login && c.login.toLowerCase().includes('copilot'))
+        );
         this.contributors.set(filtered);
       },
-      error: (err) => console.error('Error al cargar contribuidores:', err)
+      error: (err) => console.error('Error al cargar colaboradores:', err)
     });
   }
 
