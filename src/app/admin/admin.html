@@ -80,6 +80,9 @@
                     <button (click)="goToProfile(c.login)" class="btn-icon btn-go" title="Ver Perfil">
                       <i class="fab fa-github"></i>
                     </button>
+                    <button (click)="toggleHideContributor(c.login)" class="btn-icon" [class.btn-hide]="!isHidden(c.login)" [class.btn-show]="isHidden(c.login)" [title]="isHidden(c.login) ? 'Mostrar en Página Principal' : 'Ocultar de Página Principal'">
+                      <i class="fas" [ngClass]="isHidden(c.login) ? 'fa-eye' : 'fa-eye-slash'"></i>
+                    </button>
                     <button *ngIf="!isMapped(c.login)" (click)="fillMapping(c.login)" class="btn-icon btn-add-small" title="Vincular Nombre">
                       <i class="fas fa-user-edit"></i>
                     </button>

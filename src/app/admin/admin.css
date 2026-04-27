@@ -193,6 +193,24 @@
   background-color: var(--accent-hover);
 }
 
+.btn-hide {
+  background-color: var(--text-muted);
+  color: white;
+}
+
+.btn-hide:hover {
+  background-color: var(--secondary-color);
+}
+
+.btn-show {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.btn-show:hover {
+  filter: brightness(1.1);
+}
+
 .admin-avatar {
   width: 32px;
   height: 32px;

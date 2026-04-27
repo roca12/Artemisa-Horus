@@ -21,16 +21,19 @@ export class Admin implements OnInit {
   password = signal('');
   mappings = signal<UserMapping[]>([]);
   contributors = signal<any[]>([]);
+  hiddenContributors = signal<string[]>([]);
 
   newNickname = '';
   newRealName = '';
 
   private readonly STORAGE_KEY = 'github_user_mappings';
+  private readonly HIDDEN_KEY = 'github_hidden_contributors';
 
   constructor(private githubService: GithubService) {}
 
   ngOnInit() {
     this.loadMappings();
+    this.loadHidden();
   }
 
   login() {
@@ -58,8 +61,33 @@ export class Admin implements OnInit {
     }
   }
 
+  loadHidden() {
+    const saved = localStorage.getItem(this.HIDDEN_KEY);
+    if (saved) {
+      this.hiddenContributors.set(JSON.parse(saved));
+    }
+  }
+
   saveMappings() {
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.mappings()));
+  }
+
+  saveHidden() {
+    localStorage.setItem(this.HIDDEN_KEY, JSON.stringify(this.hiddenContributors()));
+  }
+
+  toggleHideContributor(login: string) {
+    const current = this.hiddenContributors();
+    if (current.includes(login)) {
+      this.hiddenContributors.set(current.filter(l => l !== login));
+    } else {
+      this.hiddenContributors.set([...current, login]);
+    }
+    this.saveHidden();
+  }
+
+  isHidden(login: string): boolean {
+    return this.hiddenContributors().includes(login);
   }
 
   addMapping() {

@@ -1,6 +1,6 @@
 <div class="container">
   <header>
-    <h1><i class="fas fa-eye"></i> {{ title() }}</h1>
+    <h1>{{ title() }}</h1>
     <div class="repo-banner">
       <p>Repositorio: <a href="https://github.com/roca12/GPC-UEB-Repo" target="_blank"><i class="fab fa-github"></i> roca12/GPC-UEB-Repo</a></p>
     </div>
@@ -31,7 +31,7 @@
 
   <div *ngIf="!loading && !error">
     <section *ngIf="commitsByWeek.length > 0; else noCommits">
-      <h2>  Commits por Semana</h2>
+      <h2>Commits por Semana</h2>
 
       <div class="tabs-container">
         <div class="tabs-header">
@@ -69,30 +69,55 @@
     </section>
     <ng-template #noCommits>
       <section>
-        <h2><i class="fas fa-code-commit"></i> Commits por Semana</h2>
-        <p class="no-data"><i class="fas fa-info-circle"></i> No se encontraron commits desde enero de 2026.</p>
+        <h2>Commits por Semana</h2>
+        <p class="no-data"><i class="fas fa-info-circle"></i> No se encontraron commits desde el 20/04/2026.</p>
       </section>
     </ng-template>
 
     <section *ngIf="contributorsInFolder.length > 0; else noContributors">
-      <h2><i class="fas fa-trophy"></i> Actividad por Competidor</h2>
+      <h2>Actividad por Competidor</h2>
 
-      <div class="tabs-container">
-        <div class="tabs-header">
-          <button
-            *ngFor="let contributor of contributorsInFolder"
-            [class.active]="selectedContributor === contributor.login"
-            (click)="selectContributor(contributor.login)"
-            class="tab-btn"
-            [title]="contributor.login"
-          >
-            <img *ngIf="contributor.avatarUrl" [src]="contributor.avatarUrl" class="tab-avatar" [alt]="contributor.login">
-            <i *ngIf="!contributor.avatarUrl" class="fas fa-user-circle"></i>
-            {{ getDisplayName(contributor.login) }}
-            <span class="badge">{{ contributor.totalFiles }}</span>
-          </button>
+      <div class="competitors-split">
+        <div class="competitors-column">
+          <h3 class="text-success"><i class="fas fa-check-circle"></i> Cumplen Meta</h3>
+          <div class="contributor-grid">
+            <div
+              *ngFor="let contributor of getPassedContributors()"
+              [class.active]="selectedContributor === contributor.login"
+              (click)="selectContributor(contributor.login)"
+              class="contributor-card"
+            >
+              <img *ngIf="contributor.avatarUrl" [src]="contributor.avatarUrl" class="card-avatar" [alt]="contributor.login">
+              <i *ngIf="!contributor.avatarUrl" class="fas fa-user-circle"></i>
+              <div class="card-info">
+                <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
+                <span class="card-stats">{{ contributor.totalFiles }} ejercicios</span>
+              </div>
+            </div>
+          </div>
         </div>
 
+        <div class="competitors-column">
+          <h3 class="text-danger"><i class="fas fa-times-circle"></i> Pendientes / Deuda</h3>
+          <div class="contributor-grid">
+            <div
+              *ngFor="let contributor of getFailedContributors()"
+              [class.active]="selectedContributor === contributor.login"
+              (click)="selectContributor(contributor.login)"
+              class="contributor-card failed"
+            >
+              <img *ngIf="contributor.avatarUrl" [src]="contributor.avatarUrl" class="card-avatar" [alt]="contributor.login">
+              <i *ngIf="!contributor.avatarUrl" class="fas fa-user-circle"></i>
+              <div class="card-info">
+                <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
+                <span class="card-debt">Debe: {{ contributor.totalDebt }} ejercicios</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs-container" style="margin-top: 2rem;">
         <div class="tab-content" *ngIf="getSelectedContributorStats() as selected">
           <div class="stats-header">
             <h3>
@@ -101,26 +126,52 @@
               Estadísticas de {{ getDisplayName(selected.login) }}
               <span class="nickname-hint" *ngIf="userMappings[selected.login.toLowerCase()]">({{ selected.login }})</span>
             </h3>
-            <p>Total de archivos/aportes desde 2026: <strong>{{ selected.totalFiles }}</strong></p>
+            <p>Total de archivos/aportes desde el 20/04/2026: <strong>{{ selected.totalFiles }}</strong></p>
+          </div>
+
+          <div class="table-controls">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" [(ngModel)]="searchTerm" placeholder="Buscar en archivos o commits...">
+            </div>
+            <div class="filter-box">
+              <label><i class="fas fa-filter"></i> Estado:</label>
+              <select [(ngModel)]="statusFilter">
+                <option value="all">Todos</option>
+                <option value="met">Meta Cumplida</option>
+                <option value="failed">Pendientes</option>
+              </select>
+            </div>
           </div>
 
           <div class="table-container">
             <table>
               <thead>
                 <tr>
+                  <th class="col-num">#</th>
                   <th><i class="fas fa-calendar"></i> Semana</th>
+                  <th><i class="fas fa-check-double"></i> Estado</th>
                   <th><i class="fas fa-file-code"></i> Nuevos Aportes</th>
-                  <th><i class="fas fa-chart-bar"></i> Diferencia</th>
+                  <th><i class="fas fa-exclamation-circle"></i> Deuda</th>
                   <th><i class="fas fa-list-ul"></i> Actividad</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let week of selected.weeklyStats">
+                <tr *ngFor="let week of getFilteredWeeklyStats(); let i = index">
+                  <td class="col-num">{{ i + 1 }}</td>
                   <td><strong>{{ week.weekStart | date:'dd/MM/yyyy' }}</strong></td>
+                  <td>
+                    <span *ngIf="week.isGoalMet" class="status-icon success" title="Meta cumplida">
+                      <i class="fas fa-check-circle"></i>
+                    </span>
+                    <span *ngIf="!week.isGoalMet" class="status-icon danger" title="Meta no cumplida">
+                      <i class="fas fa-times-circle"></i>
+                    </span>
+                  </td>
                   <td>{{ week.count }} archivos</td>
                   <td>
-                    <span [class.text-success]="week.diff > 0" [class.text-danger]="week.diff < 0">
-                      {{ week.diff > 0 ? '+' : '' }}{{ week.diff }}
+                    <span [class.text-danger]="week.debt > 0">
+                      {{ week.debt > 0 ? week.debt + ' ejercicios' : '-' }}
                     </span>
                   </td>
                   <td>
@@ -155,8 +206,8 @@
     </section>
     <ng-template #noContributors>
       <section>
-        <h2><i class="fas fa-users-slash"></i> Colaboradores</h2>
-        <p class="no-data"><i class="fas fa-info-circle"></i> No hay aportes registrados en esta carpeta desde enero de 2026.</p>
+        <h2>Colaboradores</h2>
+        <p class="no-data"><i class="fas fa-info-circle"></i> No hay aportes registrados en esta carpeta desde el 20/04/2026.</p>
       </section>
     </ng-template>
   </div>

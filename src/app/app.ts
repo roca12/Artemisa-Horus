@@ -17,6 +17,8 @@ interface ContributorWeekStats {
   diff: number;
   messages: string[];
   files: string[];
+  isGoalMet: boolean;
+  debt: number;
 }
 
 interface ContributorInfo {
@@ -24,6 +26,8 @@ interface ContributorInfo {
   avatarUrl?: string;
   totalFiles: number;
   weeklyStats: ContributorWeekStats[];
+  totalDebt: number;
+  isCurrentGoalMet: boolean;
 }
 
 @Component({
@@ -38,6 +42,8 @@ export class App implements OnInit, OnDestroy {
   selectedWeek: string | null = null;
   contributorsInFolder: ContributorInfo[] = [];
   selectedContributor: string | null = null;
+  searchTerm = '';
+  statusFilter = 'all'; // 'all', 'met', 'failed'
   isDarkMode = signal(false);
   loading = true;
   loadingProgress = 0;
@@ -52,6 +58,7 @@ export class App implements OnInit, OnDestroy {
   codeMirrorEditor?: any;
   showAdmin = false;
   userMappings: { [nickname: string]: string } = {};
+  hiddenContributors: string[] = [];
 
   private refreshSubscription?: Subscription;
 
@@ -59,7 +66,7 @@ export class App implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.initTheme();
-    this.loadUserMappings();
+    this.loadSettings();
     this.loadData();
     // Configurar recarga automática cada 5 minutos
     this.refreshSubscription = interval(5 * 60 * 1000).subscribe(() => {
@@ -86,19 +93,28 @@ export class App implements OnInit, OnDestroy {
   toggleAdmin() {
     this.showAdmin = !this.showAdmin;
     if (!this.showAdmin) {
-      this.loadUserMappings(); // Recargar mapeos al cerrar el admin
+      this.loadSettings(); // Recargar mapeos y configuraciones al cerrar el admin
     }
   }
 
-  private loadUserMappings() {
-    const saved = localStorage.getItem('github_user_mappings');
-    if (saved) {
-      const mappingsArray = JSON.parse(saved);
+  private loadSettings() {
+    // Cargar mapeos
+    const savedMappings = localStorage.getItem('github_user_mappings');
+    if (savedMappings) {
+      const mappingsArray = JSON.parse(savedMappings);
       const mappingsObj: { [nickname: string]: string } = {};
       mappingsArray.forEach((m: any) => {
         mappingsObj[m.githubNickname.toLowerCase()] = m.realName;
       });
       this.userMappings = mappingsObj;
+    }
+
+    // Cargar contribuidores ocultos
+    const savedHidden = localStorage.getItem('github_hidden_contributors');
+    if (savedHidden) {
+      this.hiddenContributors = JSON.parse(savedHidden);
+    } else {
+      this.hiddenContributors = [];
     }
   }
 
@@ -132,25 +148,25 @@ export class App implements OnInit, OnDestroy {
 
     forkJoin({
       generalCommits: this.githubService.getCommits(),
-      folderCommits: this.githubService.getCommitsByPath(folderPath)
+      folderCommits: this.githubService.getCommitsByPath(folderPath),
+      allContributors: this.githubService.getContributors()
     }).subscribe({
       next: (data) => {
         console.log('Datos recibidos correctamente:', data);
         this.loadingProgress = 20; // 20% tras la primera carga
 
-        // Filtrar commits de 2026 para reducir las peticiones de detalle
-        const recentFolderCommits = data.folderCommits.filter(c => new Date(c.commit.author.date).getFullYear() >= 2026);
+        // Filtrar commits desde el 20/04/2026 para reducir las peticiones de detalle
+        const startDate = new Date(2026, 3, 20); // 20 de Abril de 2026
+        const recentFolderCommits = data.folderCommits.filter(c => new Date(c.commit.author.date) >= startDate);
 
         if (recentFolderCommits.length > 0) {
           const totalDetails = recentFolderCommits.length;
           let completedDetails = 0;
 
-          // Obtener detalles de cada commit para saber qué archivos se modificaron
           const detailRequests = recentFolderCommits.map(c =>
             this.githubService.getCommitDetail(c.sha).pipe(
               map(detail => {
                 completedDetails++;
-                // El progreso de detalles va del 20% al 90%
                 this.loadingProgress = 20 + Math.round((completedDetails / totalDetails) * 70);
                 return detail;
               })
@@ -160,7 +176,7 @@ export class App implements OnInit, OnDestroy {
           forkJoin(detailRequests).subscribe({
             next: (detailedCommits) => {
               this.processCommits(data.generalCommits);
-              this.processFolderContributors(detailedCommits);
+              this.processFolderContributors(detailedCommits, data.allContributors);
 
               if (this.commitsByWeek.length > 0) {
                 this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
@@ -177,10 +193,14 @@ export class App implements OnInit, OnDestroy {
           });
         } else {
           this.processCommits(data.generalCommits);
-          this.processFolderContributors([]);
+          this.processFolderContributors([], data.allContributors);
 
           if (this.commitsByWeek.length > 0) {
             this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
+          }
+
+          if (this.contributorsInFolder.length > 0) {
+            this.selectedContributor = this.contributorsInFolder[0].login;
           }
 
           this.loadingProgress = 100;
@@ -212,11 +232,12 @@ export class App implements OnInit, OnDestroy {
   private processCommits(commits: GithubCommit[]) {
     const weeks: { [key: string]: WeekStats } = {};
 
+    const startDate = new Date(2026, 3, 20);
     commits.forEach(c => {
       const date = new Date(c.commit.author.date);
 
-      // Solo incluir commits de 2026 en adelante
-      if (date.getFullYear() < 2026) {
+      // Solo incluir commits desde el 20/04/2026 en adelante
+      if (date < startDate) {
         return;
       }
 
@@ -239,14 +260,37 @@ export class App implements OnInit, OnDestroy {
     this.commitsByWeek = Object.values(weeks).sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
   }
 
-  private processFolderContributors(commits: GithubCommit[]) {
+  private processFolderContributors(commits: GithubCommit[], allGitHubContributors: any[] = []) {
     const contributorsData: { [login: string]: { [weekKey: string]: { messages: string[], files: string[] } } } = {};
+
+    // Inicializar datos para TODOS los contribuidores de GitHub (si no están ocultos)
+    allGitHubContributors.forEach(c => {
+      if (!this.hiddenContributors.includes(c.login)) {
+        contributorsData[c.login] = {};
+      }
+    });
+
+    // Determinar la semana actual y la primera semana de interés
+    const now = new Date();
+    const currentWeekStart = this.getStartOfWeek(now);
+    const startDate = new Date(2026, 3, 20);
+    const firstWeekStart = this.getStartOfWeek(startDate);
+
+    // Generar todas las semanas desde la primera hasta la actual
+    const allWeeks: string[] = [];
+    let tempWeek = new Date(firstWeekStart);
+    while (tempWeek <= currentWeekStart) {
+      allWeeks.push(tempWeek.toISOString().split('T')[0]);
+      tempWeek.setDate(tempWeek.getDate() + 7);
+    }
+    allWeeks.reverse(); // De más reciente a más antigua
+    const reversedWeeks = [...allWeeks].reverse(); // De más antigua a más reciente para cálculo de deuda
 
     commits.forEach(commit => {
       const date = new Date(commit.commit.author.date);
 
-      // Solo incluir commits de 2026 en adelante
-      if (date.getFullYear() < 2026) {
+      // Solo incluir commits desde el 20/04/2026 en adelante
+      if (date < startDate) {
         return;
       }
 
@@ -259,11 +303,13 @@ export class App implements OnInit, OnDestroy {
           return lower.endsWith('.java') || lower.endsWith('.cpp') || lower.endsWith('.py');
         });
 
-      // Si el commit no tiene archivos relevantes en los lenguajes solicitados, podemos elegir ignorarlo
-      // o simplemente registrar el commit con lista de archivos vacía. El usuario dijo "solo tener en cuenta los archivos java, cpp y python"
       if (relevantFiles.length === 0) return;
 
       const author = commit.author?.login || commit.commit.author.name;
+
+      // Si el autor está oculto, ignorar
+      if (this.hiddenContributors.includes(author)) return;
+
       const weekStart = this.getStartOfWeek(date);
       const weekKey = weekStart.toISOString().split('T')[0];
 
@@ -283,15 +329,41 @@ export class App implements OnInit, OnDestroy {
     });
 
     this.contributorsInFolder = Object.entries(contributorsData).map(([login, weeksData]) => {
-      const weeklyStats: ContributorWeekStats[] = Object.entries(weeksData).map(([weekKey, data]) => ({
-        weekStart: new Date(weekKey),
-        count: data.files.length, // Usamos la cantidad de archivos únicos como "aportes"
-        diff: 0,
-        messages: data.messages,
-        files: data.files
-      })).sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
+      let totalDelivered = 0;
+      const goalPerWeek = 3;
+      let accumulatedDebt = 0;
 
-      // Calcular diferencias
+      // Procesar semanas de antigua a reciente para calcular deuda acumulada correctamente
+      const weeklyStatsChronological: ContributorWeekStats[] = reversedWeeks.map(weekKey => {
+        const data = weeksData[weekKey] || { messages: [], files: [] };
+        const count = data.files.length; // Ejercicios únicos de esta semana
+        totalDelivered += count;
+
+        // Lógica de deuda:
+        // 1. Añadimos la meta de la semana actual a la deuda acumulada
+        accumulatedDebt += goalPerWeek;
+
+        // 2. Restamos los ejercicios entregados esta semana de la deuda acumulada
+        // (Si entrega más de la deuda, la deuda queda en 0, pero no negativa para la próxima semana)
+        accumulatedDebt = Math.max(0, accumulatedDebt - count);
+
+        // Se cumple la meta si al finalizar la semana la deuda es 0
+        const isGoalMet = accumulatedDebt === 0;
+
+        return {
+          weekStart: new Date(weekKey),
+          count: count,
+          diff: 0,
+          messages: data.messages,
+          files: data.files,
+          isGoalMet: isGoalMet,
+          debt: accumulatedDebt
+        };
+      });
+
+      const weeklyStats = [...weeklyStatsChronological].reverse();
+
+      // Calcular diferencias de aportes entre semanas consecutivas (visual)
       for (let i = 0; i < weeklyStats.length - 1; i++) {
         weeklyStats[i].diff = weeklyStats[i].count - weeklyStats[i + 1].count;
       }
@@ -299,21 +371,32 @@ export class App implements OnInit, OnDestroy {
         weeklyStats[weeklyStats.length - 1].diff = weeklyStats[weeklyStats.length - 1].count;
       }
 
-      // Buscar el avatar en los commits
+      // Buscar avatar en los commits o en la lista de contribuidores
       const contributorCommit = commits.find(c => (c.author?.login || c.commit.author.name) === login);
-      const avatarUrl = contributorCommit?.author?.avatar_url;
+      let avatarUrl = contributorCommit?.author?.avatar_url;
+
+      if (!avatarUrl) {
+        const gitHubUser = allGitHubContributors.find(u => u.login === login);
+        avatarUrl = gitHubUser?.avatar_url;
+      }
+
+      const finalDebt = accumulatedDebt;
 
       return {
         login,
         avatarUrl,
-        totalFiles: weeklyStats.reduce((sum, week) => sum + week.count, 0),
-        weeklyStats
+        totalFiles: totalDelivered,
+        weeklyStats,
+        totalDebt: finalDebt,
+        isCurrentGoalMet: finalDebt === 0
       };
     }).sort((a, b) => b.totalFiles - a.totalFiles);
   }
 
   selectContributor(login: string) {
     this.selectedContributor = login;
+    this.searchTerm = '';
+    this.statusFilter = 'all';
   }
 
   selectWeek(weekKey: string) {
@@ -329,12 +412,41 @@ export class App implements OnInit, OnDestroy {
     return this.contributorsInFolder.find(c => c.login === this.selectedContributor);
   }
 
+  getFilteredWeeklyStats(): ContributorWeekStats[] {
+    const contributor = this.getSelectedContributorStats();
+    if (!contributor) return [];
+
+    return contributor.weeklyStats.filter(week => {
+      // Filtro por estado
+      const matchesStatus = this.statusFilter === 'all' ||
+                           (this.statusFilter === 'met' && week.isGoalMet) ||
+                           (this.statusFilter === 'failed' && !week.isGoalMet);
+
+      // Filtro por búsqueda (en mensajes de commits o nombres de archivos)
+      const searchLower = this.searchTerm.toLowerCase();
+      const matchesSearch = !this.searchTerm ||
+                           week.messages.some(m => m.toLowerCase().includes(searchLower)) ||
+                           week.files.some(f => f.toLowerCase().includes(searchLower)) ||
+                           week.weekStart.toLocaleDateString().includes(this.searchTerm);
+
+      return matchesStatus && matchesSearch;
+    });
+  }
+
+  getPassedContributors(): ContributorInfo[] {
+    return this.contributorsInFolder.filter(c => c.isCurrentGoalMet);
+  }
+
+  getFailedContributors(): ContributorInfo[] {
+    return this.contributorsInFolder.filter(c => !c.isCurrentGoalMet);
+  }
+
   private getStartOfWeek(date: Date): Date {
     const d = new Date(date);
+    d.setHours(0, 0, 0, 0); // Resetear horas primero
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Lunes como inicio
     d.setDate(diff);
-    d.setHours(0, 0, 0, 0);
     return d;
   }
 
