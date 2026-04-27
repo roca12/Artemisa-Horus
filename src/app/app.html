@@ -1,7 +1,7 @@
 <div class="container">
   <header>
-    <h1>{{ title() }}</h1>
-    <p>Repositorio: <a href="https://github.com/roca12/GPC-UEB-Repo" target="_blank">roca12/GPC-UEB-Repo</a></p>
+    <h1><i class="fas fa-eye"></i> {{ title() }}</h1>
+    <p>Repositorio: <a href="https://github.com/roca12/GPC-UEB-Repo" target="_blank"><i class="fab fa-github"></i> roca12/GPC-UEB-Repo</a></p>
 
     <div class="header-actions">
     </div>
@@ -9,7 +9,7 @@
 
   <div *ngIf="loading" class="loading-container">
     <div class="spinner"></div>
-    <p>Cargando datos del repositorio... {{ loadingProgress }}%</p>
+    <p><i class="fas fa-sync fa-spin"></i> Cargando datos del repositorio... {{ loadingProgress }}%</p>
     <div class="progress-bar-container">
       <div class="progress-bar" [style.width.%]="loadingProgress"></div>
     </div>
@@ -17,34 +17,57 @@
   </div>
 
   <div *ngIf="error" class="error-container">
-    <div class="error">{{ error }}</div>
-    <button (click)="loadData()" class="retry-btn">Reintentar</button>
+    <div class="error"><i class="fas fa-exclamation-triangle"></i> {{ error }}</div>
+    <button (click)="loadData()" class="retry-btn"><i class="fas fa-redo"></i> Reintentar</button>
   </div>
 
   <div *ngIf="!loading && !error">
     <section *ngIf="commitsByWeek.length > 0; else noCommits">
-      <h2>Commits por Semana</h2>
-      <div class="card-grid">
-        <div *ngFor="let week of commitsByWeek" class="card">
-          <h3>Semana del {{ week.weekStart | date:'dd/MM/yyyy' }}</h3>
-          <p><strong>Total Commits:</strong> {{ week.commitsCount }}</p>
-          <ul>
-            <li *ngFor="let author of getAuthorKeys(week.authors)">
-              {{ author }}: {{ week.authors[author] }} commits
-            </li>
-          </ul>
+      <h2><i class="fas fa-calendar-week"></i> Commits por Semana</h2>
+
+      <div class="tabs-container">
+        <div class="tabs-header">
+          <button
+            *ngFor="let week of commitsByWeek"
+            [class.active]="selectedWeek === week.weekStart.toISOString().split('T')[0]"
+            (click)="selectWeek(week.weekStart.toISOString().split('T')[0])"
+            class="tab-btn"
+          >
+            <i class="fas fa-calendar-day"></i> {{ week.weekStart | date:'dd/MM/yyyy' }}
+            <span class="badge">{{ week.commitsCount }}</span>
+          </button>
+        </div>
+
+        <div class="tab-content" *ngIf="getSelectedWeekStats() as selectedW">
+          <div class="week-detail-card">
+            <h3><i class="fas fa-info-circle"></i> Detalles de la Semana {{ selectedW.weekStart | date:'dd/MM/yyyy' }}</h3>
+            <div class="stats-summary">
+              <div class="stat-item">
+                <span class="stat-label">Total Commits:</span>
+                <span class="stat-value">{{ selectedW.commitsCount }}</span>
+              </div>
+            </div>
+
+            <h4><i class="fas fa-users"></i> Autores</h4>
+            <ul class="author-list">
+              <li *ngFor="let author of getAuthorKeys(selectedW.authors)">
+                <span class="author-name"><i class="fas fa-user"></i> {{ author }}:</span>
+                <span class="author-count">{{ selectedW.authors[author] }} commits</span>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
     <ng-template #noCommits>
       <section>
-        <h2>Commits por Semana</h2>
-        <p class="no-data">No se encontraron commits desde enero de 2026.</p>
+        <h2><i class="fas fa-calendar-week"></i> Commits por Semana</h2>
+        <p class="no-data"><i class="fas fa-info-circle"></i> No se encontraron commits desde enero de 2026.</p>
       </section>
     </ng-template>
 
     <section *ngIf="contributorsInFolder.length > 0; else noContributors">
-      <h2>Actividad por Competidor en "Resueltos por competidor"</h2>
+      <h2><i class="fas fa-trophy"></i> Actividad por Competidor</h2>
 
       <div class="tabs-container">
         <div class="tabs-header">
@@ -54,14 +77,14 @@
             (click)="selectContributor(contributor.login)"
             class="tab-btn"
           >
-            {{ contributor.login }}
+            <i class="fas fa-user-circle"></i> {{ contributor.login }}
             <span class="badge">{{ contributor.totalFiles }}</span>
           </button>
         </div>
 
         <div class="tab-content" *ngIf="getSelectedContributorStats() as selected">
           <div class="stats-header">
-            <h3>Estadísticas de {{ selected.login }}</h3>
+            <h3><i class="fas fa-chart-line"></i> Estadísticas de {{ selected.login }}</h3>
             <p>Total de archivos/aportes desde 2026: <strong>{{ selected.totalFiles }}</strong></p>
           </div>
 
@@ -69,10 +92,10 @@
             <table>
               <thead>
                 <tr>
-                  <th>Semana</th>
-                  <th>Nuevos Aportes</th>
-                  <th>Diferencia (vs sem. ant.)</th>
-                  <th>Mensajes de actividad</th>
+                  <th><i class="fas fa-calendar"></i> Semana</th>
+                  <th><i class="fas fa-file-code"></i> Nuevos Aportes</th>
+                  <th><i class="fas fa-chart-bar"></i> Diferencia</th>
+                  <th><i class="fas fa-list-ul"></i> Actividad</th>
                 </tr>
               </thead>
               <tbody>
@@ -87,16 +110,16 @@
                   <td>
                     <div class="activity-details">
                       <details *ngIf="week.files.length > 0">
-                        <summary><strong>Archivos ({{ week.files.length }})</strong></summary>
+                        <summary><strong><i class="fas fa-files"></i> Archivos ({{ week.files.length }})</strong></summary>
                         <ul class="file-list">
-                          <li *ngFor="let file of week.files">{{ file }}</li>
+                          <li *ngFor="let file of week.files"><i class="fas fa-file-alt"></i> {{ file }}</li>
                         </ul>
                       </details>
 
                       <details *ngIf="week.messages.length > 0">
-                        <summary><strong>Commits ({{ week.messages.length }})</strong></summary>
+                        <summary><strong><i class="fas fa-code-commit"></i> Commits ({{ week.messages.length }})</strong></summary>
                         <ul class="activity-list">
-                          <li *ngFor="let msg of week.messages">{{ msg }}</li>
+                          <li *ngFor="let msg of week.messages"><i class="fas fa-comment-alt"></i> {{ msg }}</li>
                         </ul>
                       </details>
                     </div>
@@ -110,8 +133,8 @@
     </section>
     <ng-template #noContributors>
       <section>
-        <h2>Colaboradores en "Resueltos por competidor"</h2>
-        <p class="no-data">No hay aportes registrados en esta carpeta desde enero de 2026.</p>
+        <h2><i class="fas fa-users-slash"></i> Colaboradores</h2>
+        <p class="no-data"><i class="fas fa-info-circle"></i> No hay aportes registrados en esta carpeta desde enero de 2026.</p>
       </section>
     </ng-template>
   </div>

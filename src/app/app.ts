@@ -32,6 +32,7 @@ export class App implements OnInit, OnDestroy {
   protected readonly title = signal('GPC - Horus');
 
   commitsByWeek: WeekStats[] = [];
+  selectedWeek: string | null = null;
   contributorsInFolder: ContributorInfo[] = [];
   selectedContributor: string | null = null;
   loading = true;
@@ -95,6 +96,10 @@ export class App implements OnInit, OnDestroy {
               this.processCommits(data.generalCommits);
               this.processFolderContributors(detailedCommits);
 
+              if (this.commitsByWeek.length > 0) {
+                this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
+              }
+
               if (this.contributorsInFolder.length > 0) {
                 this.selectedContributor = this.contributorsInFolder[0].login;
               }
@@ -107,6 +112,11 @@ export class App implements OnInit, OnDestroy {
         } else {
           this.processCommits(data.generalCommits);
           this.processFolderContributors([]);
+
+          if (this.commitsByWeek.length > 0) {
+            this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
+          }
+
           this.loadingProgress = 100;
           this.loading = false;
           this.cdr.detectChanges();
@@ -233,6 +243,15 @@ export class App implements OnInit, OnDestroy {
 
   selectContributor(login: string) {
     this.selectedContributor = login;
+  }
+
+  selectWeek(weekKey: string) {
+    this.selectedWeek = weekKey;
+  }
+
+  getSelectedWeekStats(): WeekStats | undefined {
+    if (!this.selectedWeek) return undefined;
+    return this.commitsByWeek.find(w => w.weekStart.toISOString().split('T')[0] === this.selectedWeek);
   }
 
   getSelectedContributorStats(): ContributorInfo | undefined {
