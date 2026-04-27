@@ -1,5 +1,7 @@
 import { Component, OnInit, signal, Output, EventEmitter } from '@angular/core';
 import { GithubService } from '../github.service';
+import { environment } from '../../environments/environment';
+import * as bcrypt from 'bcryptjs';
 
 interface UserMapping {
   githubNickname: string;
@@ -23,7 +25,6 @@ export class Admin implements OnInit {
   newNickname = '';
   newRealName = '';
 
-  private readonly ADMIN_PASSWORD = 'admin'; // Contraseña por defecto según requerimiento simple
   private readonly STORAGE_KEY = 'github_user_mappings';
 
   constructor(private githubService: GithubService) {}
@@ -33,7 +34,7 @@ export class Admin implements OnInit {
   }
 
   login() {
-    if (this.password() === this.ADMIN_PASSWORD) {
+    if (bcrypt.compareSync(this.password(), environment.adminPasswordHash)) {
       this.isAuthenticated.set(true);
       this.loadContributors();
     } else {
