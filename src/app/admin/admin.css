@@ -258,6 +258,14 @@
   border: 1px solid var(--border-color);
 }
 
+.hidden-table tr {
+  opacity: 0.8;
+}
+
+.hidden-table tr:hover {
+  opacity: 1;
+}
+
 .status-badge {
   font-size: 0.75rem;
   padding: 2px 8px;

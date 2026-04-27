@@ -135,6 +135,14 @@ export class Admin implements OnInit {
     window.open(`https://github.com/${nickname}`, '_blank');
   }
 
+  getVisibleContributors() {
+    return this.contributors().filter(c => !this.isHidden(c.login));
+  }
+
+  getHiddenContributors() {
+    return this.contributors().filter(c => this.isHidden(c.login));
+  }
+
   onClose() {
     this.close.emit();
   }

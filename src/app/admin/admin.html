@@ -47,7 +47,7 @@
         </div>
 
         <div class="mappings-list">
-          <h4><i class="fas fa-users"></i> Contribuidores del Repositorio</h4>
+          <h4><i class="fas fa-users"></i> Contribuidores Visibles</h4>
           <div class="table-scroll">
             <table class="admin-table">
               <thead>
@@ -60,7 +60,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let c of contributors()" [class.mapped]="isMapped(c.login)">
+                <tr *ngFor="let c of getVisibleContributors()" [class.mapped]="isMapped(c.login)">
                   <td>
                     <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login">
                   </td>
@@ -80,8 +80,8 @@
                     <button (click)="goToProfile(c.login)" class="btn-icon btn-go" title="Ver Perfil">
                       <i class="fab fa-github"></i>
                     </button>
-                    <button (click)="toggleHideContributor(c.login)" class="btn-icon" [class.btn-hide]="!isHidden(c.login)" [class.btn-show]="isHidden(c.login)" [title]="isHidden(c.login) ? 'Mostrar en Página Principal' : 'Ocultar de Página Principal'">
-                      <i class="fas" [ngClass]="isHidden(c.login) ? 'fa-eye' : 'fa-eye-slash'"></i>
+                    <button (click)="toggleHideContributor(c.login)" class="btn-icon btn-hide" title="Ocultar de Página Principal">
+                      <i class="fas fa-eye-slash"></i>
                     </button>
                     <button *ngIf="!isMapped(c.login)" (click)="fillMapping(c.login)" class="btn-icon btn-add-small" title="Vincular Nombre">
                       <i class="fas fa-user-edit"></i>
@@ -91,8 +91,61 @@
                     </button>
                   </td>
                 </tr>
-                <tr *ngIf="contributors().length === 0">
-                  <td colspan="5" class="no-data">Cargando contribuidores o no se encontraron...</td>
+                <tr *ngIf="getVisibleContributors().length === 0">
+                  <td colspan="5" class="no-data">No hay contribuidores visibles o cargando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mappings-list" style="margin-top: 2rem;">
+          <h4><i class="fas fa-eye-slash"></i> Contribuidores Ocultos</h4>
+          <div class="table-scroll">
+            <table class="admin-table hidden-table">
+              <thead>
+                <tr>
+                  <th>Avatar</th>
+                  <th>GitHub Nickname</th>
+                  <th>Nombre Real</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let c of getHiddenContributors()" [class.mapped]="isMapped(c.login)">
+                  <td>
+                    <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login">
+                  </td>
+                  <td><strong>{{ c.login }}</strong></td>
+                  <td>
+                    <span *ngIf="isMapped(c.login)" class="real-name-tag">
+                      {{ getRealName(c.login) }}
+                    </span>
+                    <span *ngIf="!isMapped(c.login)" class="pending-tag">Pendiente</span>
+                  </td>
+                  <td>
+                    <span class="status-badge" [class.status-ok]="isMapped(c.login)">
+                      {{ isMapped(c.login) ? 'Vinculado' : 'No vinculado' }}
+                    </span>
+                  </td>
+                  <td class="actions">
+                    <button (click)="goToProfile(c.login)" class="btn-icon btn-go" title="Ver Perfil">
+                      <i class="fab fa-github"></i>
+                    </button>
+                    <button (click)="toggleHideContributor(c.login)" class="btn-icon btn-show" title="Mostrar en Página Principal">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button *ngIf="!isMapped(c.login)" (click)="fillMapping(c.login)" class="btn-icon btn-add-small" title="Vincular Nombre">
+                      <i class="fas fa-user-edit"></i>
+                    </button>
+                    <button *ngIf="isMapped(c.login)" (click)="removeMapping(c.login)" class="btn-icon btn-delete" title="Eliminar Vínculo">
+                      <i class="fas fa-unlink"></i>
+                    </button>
+                  </td>
+                </tr>
+                <tr *ngIf="getHiddenContributors().length === 0">
+                  <td colspan="5" class="no-data">No hay contribuidores ocultos.</td>
                 </tr>
               </tbody>
             </table>
