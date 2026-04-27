@@ -72,4 +72,8 @@ export class GithubService {
   getFileContent(path: string): Observable<any> {
     return this.http.get(`${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`, this.getHeaders());
   }
+
+  getContributors(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/${this.owner}/${this.repo}/contributors`, this.getHeaders());
+  }
 }

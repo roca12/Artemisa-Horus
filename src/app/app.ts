@@ -1,7 +1,9 @@
-import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { GithubService, GithubCommit } from './github.service';
 import { forkJoin, Subscription, interval } from 'rxjs';
 import { map } from 'rxjs/operators';
+
+declare var CodeMirror: any;
 
 interface WeekStats {
   weekStart: Date;
@@ -19,6 +21,7 @@ interface ContributorWeekStats {
 
 interface ContributorInfo {
   login: string;
+  avatarUrl?: string;
   totalFiles: number;
   weeklyStats: ContributorWeekStats[];
 }
@@ -41,10 +44,14 @@ export class App implements OnInit, OnDestroy {
   error: string | null = null;
 
   // Modal para ver código
+  @ViewChild('editorContainer') editorContainer?: ElementRef;
   showModal = false;
   fileCode = '';
   selectedFileName = '';
   loadingCode = false;
+  codeMirrorEditor?: any;
+  showAdmin = false;
+  userMappings: { [nickname: string]: string } = {};
 
   private refreshSubscription?: Subscription;
 
@@ -52,6 +59,7 @@ export class App implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.initTheme();
+    this.loadUserMappings();
     this.loadData();
     // Configurar recarga automática cada 5 minutos
     this.refreshSubscription = interval(5 * 60 * 1000).subscribe(() => {
@@ -73,6 +81,29 @@ export class App implements OnInit, OnDestroy {
 
   toggleTheme() {
     this.setDarkMode(!this.isDarkMode());
+  }
+
+  toggleAdmin() {
+    this.showAdmin = !this.showAdmin;
+    if (!this.showAdmin) {
+      this.loadUserMappings(); // Recargar mapeos al cerrar el admin
+    }
+  }
+
+  private loadUserMappings() {
+    const saved = localStorage.getItem('github_user_mappings');
+    if (saved) {
+      const mappingsArray = JSON.parse(saved);
+      const mappingsObj: { [nickname: string]: string } = {};
+      mappingsArray.forEach((m: any) => {
+        mappingsObj[m.githubNickname.toLowerCase()] = m.realName;
+      });
+      this.userMappings = mappingsObj;
+    }
+  }
+
+  getDisplayName(login: string): string {
+    return this.userMappings[login.toLowerCase()] || login;
   }
 
   private setDarkMode(isDark: boolean) {
@@ -268,8 +299,13 @@ export class App implements OnInit, OnDestroy {
         weeklyStats[weeklyStats.length - 1].diff = weeklyStats[weeklyStats.length - 1].count;
       }
 
+      // Buscar el avatar en los commits
+      const contributorCommit = commits.find(c => (c.author?.login || c.commit.author.name) === login);
+      const avatarUrl = contributorCommit?.author?.avatar_url;
+
       return {
         login,
+        avatarUrl,
         totalFiles: weeklyStats.reduce((sum, week) => sum + week.count, 0),
         weeklyStats
       };
@@ -316,8 +352,9 @@ export class App implements OnInit, OnDestroy {
       next: (data: any) => {
         try {
           // GitHub devuelve el contenido en base64
-          // Usar decodificación compatible con UTF-8
-          const binaryString = atob(data.content.replace(/\s/g, ''));
+          // Decodificar Base64 manejando correctamente UTF-8
+          const base64 = data.content.replace(/\s/g, '');
+          const binaryString = atob(base64);
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
@@ -325,7 +362,11 @@ export class App implements OnInit, OnDestroy {
           this.fileCode = new TextDecoder('utf-8').decode(bytes);
           this.loadingCode = false;
           this.cdr.detectChanges();
+
+          // Inicializar o actualizar el editor después de un breve delay para asegurar que el DOM esté listo
+          setTimeout(() => this.initializeEditor(), 0);
         } catch (e) {
+          console.error('Error decodificando contenido:', e);
           this.fileCode = 'Error al decodificar el contenido del archivo.';
           this.loadingCode = false;
           this.cdr.detectChanges();
@@ -339,8 +380,66 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
+  private initializeEditor() {
+    if (this.editorContainer && !this.codeMirrorEditor) {
+      const mode = this.getMode(this.selectedFileName);
+      this.codeMirrorEditor = CodeMirror(this.editorContainer.nativeElement, {
+        value: this.fileCode,
+        mode: mode,
+        theme: this.isDarkMode() ? 'monokai' : 'default',
+        lineNumbers: true,
+        readOnly: true,
+        lineWrapping: true,
+        viewportMargin: Infinity
+      });
+    } else if (this.codeMirrorEditor) {
+      this.codeMirrorEditor.setValue(this.fileCode);
+      this.codeMirrorEditor.setOption('mode', this.getMode(this.selectedFileName));
+      this.codeMirrorEditor.setOption('theme', this.isDarkMode() ? 'monokai' : 'default');
+    }
+  }
+
+  private getMode(fileName: string): string {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'java': return 'text/x-java';
+      case 'cpp':
+      case 'c':
+      case 'h':
+      case 'hpp': return 'text/x-c++src';
+      case 'py': return 'text/x-python';
+      case 'js':
+      case 'ts': return 'text/javascript';
+      case 'html': return 'text/html';
+      case 'xml': return 'application/xml';
+      case 'md': return 'text/x-markdown';
+      default: return 'text/plain';
+    }
+  }
+
+  downloadFile() {
+    if (this.fileCode && this.fileCode !== 'Error al decodificar el contenido del archivo.') {
+      const blob = new Blob([this.fileCode], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = this.selectedFileName;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } else {
+      alert('No se puede descargar un archivo con errores de contenido.');
+    }
+  }
+
   closeModal() {
     this.showModal = false;
     this.fileCode = '';
+    if (this.codeMirrorEditor) {
+      // Limpiar el contenedor para evitar duplicados si se recrea
+      if (this.editorContainer) {
+        this.editorContainer.nativeElement.innerHTML = '';
+      }
+      this.codeMirrorEditor = undefined;
+    }
   }
 }
