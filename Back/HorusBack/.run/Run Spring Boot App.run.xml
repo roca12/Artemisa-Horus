@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run Spring Boot App" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="HorusBack" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="co.edu.unbosque.gpcueb.horusback.HorusBackApplication" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
