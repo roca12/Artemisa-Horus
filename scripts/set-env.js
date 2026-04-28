@@ -28,7 +28,7 @@ const prodEnvironmentFileContent = `export const environment = {
   production: true,
   githubToken: '${process.env['GITHUB_TOKEN'] || ''}',
   adminPasswordHash: '${adminPasswordHash}',
-  apiUrl: '${process.env['API_URL'] || 'http://localhost:8080/api'}'
+  apiUrl: '${process.env['API_URL'] || 'https://gpcueb.org/HorusBack'}'
 };
 `;
 
