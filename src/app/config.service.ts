@@ -13,7 +13,7 @@ export interface HiddenContributor {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ConfigService {
   private apiUrl = environment.apiUrl;

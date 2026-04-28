@@ -13,7 +13,7 @@ if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-const adminPassword = process.env['ADMIN_PASSWORD'] ;
+const adminPassword = process.env['ADMIN_PASSWORD'];
 const adminPasswordHash = bcrypt.hashSync(adminPassword, 10);
 
 const environmentFileContent = `export const environment = {

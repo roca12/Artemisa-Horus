@@ -20,7 +20,7 @@ import { Admin } from './admin/admin';
     ToastrModule.forRoot({
       positionClass: 'toast-bottom-right',
       preventDuplicates: true,
-    })
+    }),
   ],
   providers: [provideBrowserGlobalErrorListeners()],
   bootstrap: [App],

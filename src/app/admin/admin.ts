@@ -26,7 +26,7 @@ export class Admin implements OnInit {
   constructor(
     private githubService: GithubService,
     private configService: ConfigService,
-    private toastr: ToastrService
+    private toastr: ToastrService,
   ) {}
 
   ngOnInit() {
@@ -46,34 +46,42 @@ export class Admin implements OnInit {
 
   loadContributors() {
     const excludedLogins = [
-      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
-      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+      'github-copilot[bot]',
+      'copilot',
+      'github-copilot',
+      'azure-pipelines-bot',
+      'github-actions[bot]',
+      'roca12',
+      'anfeespi',
+      'exiic',
+      'DiegoF1311',
     ];
     this.githubService.getCollaborators().subscribe({
       next: (data) => {
         // Filtrar aquellos que tengan permisos de push y no sean bots ni usuarios excluidos
-        const filtered = data.filter(c =>
-          c.permissions?.push &&
-          !excludedLogins.includes(c.login) &&
-          !(c.login && c.login.toLowerCase().includes('copilot'))
+        const filtered = data.filter(
+          (c) =>
+            c.permissions?.push &&
+            !excludedLogins.includes(c.login) &&
+            !(c.login && c.login.toLowerCase().includes('copilot')),
         );
         this.contributors.set(filtered);
       },
-      error: (err) => console.error('Error al cargar colaboradores:', err)
+      error: (err) => console.error('Error al cargar colaboradores:', err),
     });
   }
 
   loadMappings() {
     this.configService.getMappings().subscribe({
       next: (data) => this.mappings.set(data),
-      error: (err) => console.error('Error al cargar mapeos:', err)
+      error: (err) => console.error('Error al cargar mapeos:', err),
     });
   }
 
   loadHidden() {
     this.configService.getHidden().subscribe({
-      next: (data) => this.hiddenContributors.set(data.map(h => h.githubNickname)),
-      error: (err) => console.error('Error al cargar colaboradores ocultos:', err)
+      next: (data) => this.hiddenContributors.set(data.map((h) => h.githubNickname)),
+      error: (err) => console.error('Error al cargar colaboradores ocultos:', err),
     });
   }
 
@@ -82,13 +90,13 @@ export class Admin implements OnInit {
     if (current.includes(login)) {
       this.configService.deleteHidden(login).subscribe({
         next: () => {
-          this.hiddenContributors.set(current.filter(l => l !== login));
+          this.hiddenContributors.set(current.filter((l) => l !== login));
           this.toastr.info(`Colaborador ${login} visible`);
         },
         error: (err) => {
           console.error('Error al mostrar colaborador:', err);
           this.toastr.error('Error al actualizar colaborador');
-        }
+        },
       });
     } else {
       this.configService.saveHidden({ githubNickname: login }).subscribe({
@@ -99,7 +107,7 @@ export class Admin implements OnInit {
         error: (err) => {
           console.error('Error al ocultar colaborador:', err);
           this.toastr.error('Error al actualizar colaborador');
-        }
+        },
       });
     }
   }
@@ -111,7 +119,9 @@ export class Admin implements OnInit {
   addMapping() {
     if (this.newNickname.trim() && this.newRealName.trim()) {
       const current = this.mappings();
-      const exists = current.find(m => m.githubNickname.toLowerCase() === this.newNickname.toLowerCase());
+      const exists = current.find(
+        (m) => m.githubNickname.toLowerCase() === this.newNickname.toLowerCase(),
+      );
 
       if (exists) {
         this.toastr.warning('Este nickname ya está registrado');
@@ -120,7 +130,7 @@ export class Admin implements OnInit {
 
       const newMapping: UserMapping = {
         githubNickname: this.newNickname.trim(),
-        realName: this.newRealName.trim()
+        realName: this.newRealName.trim(),
       };
 
       this.configService.saveMapping(newMapping).subscribe({
@@ -133,7 +143,7 @@ export class Admin implements OnInit {
         error: (err) => {
           console.error('Error al guardar mapeo:', err);
           this.toastr.error('Error al guardar mapeo');
-        }
+        },
       });
     }
   }
@@ -141,13 +151,13 @@ export class Admin implements OnInit {
   removeMapping(nickname: string) {
     this.configService.deleteMapping(nickname).subscribe({
       next: () => {
-        this.mappings.set(this.mappings().filter(m => m.githubNickname !== nickname));
+        this.mappings.set(this.mappings().filter((m) => m.githubNickname !== nickname));
         this.toastr.info('Mapeo eliminado');
       },
       error: (err) => {
         console.error('Error al eliminar mapeo:', err);
         this.toastr.error('Error al eliminar mapeo');
-      }
+      },
     });
   }
 
@@ -158,11 +168,13 @@ export class Admin implements OnInit {
   }
 
   isMapped(nickname: string): boolean {
-    return this.mappings().some(m => m.githubNickname.toLowerCase() === nickname.toLowerCase());
+    return this.mappings().some((m) => m.githubNickname.toLowerCase() === nickname.toLowerCase());
   }
 
   getRealName(nickname: string): string {
-    const m = this.mappings().find(m => m.githubNickname.toLowerCase() === nickname.toLowerCase());
+    const m = this.mappings().find(
+      (m) => m.githubNickname.toLowerCase() === nickname.toLowerCase(),
+    );
     return m ? m.realName : '';
   }
 
@@ -171,11 +183,11 @@ export class Admin implements OnInit {
   }
 
   getVisibleContributors() {
-    return this.contributors().filter(c => !this.isHidden(c.login));
+    return this.contributors().filter((c) => !this.isHidden(c.login));
   }
 
   getHiddenContributors() {
-    return this.contributors().filter(c => this.isHidden(c.login));
+    return this.contributors().filter((c) => this.isHidden(c.login));
   }
 
   onClose() {
