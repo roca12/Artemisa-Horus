@@ -37,7 +37,8 @@
             "styles": [
               "src/styles.css",
               "node_modules/codemirror/lib/codemirror.css",
-              "node_modules/codemirror/theme/monokai.css"
+              "node_modules/codemirror/theme/monokai.css",
+              "node_modules/ngx-toastr/toastr.css"
             ],
             "scripts": [
               "node_modules/codemirror/lib/codemirror.js",
@@ -50,6 +51,12 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
