@@ -4,8 +4,10 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "startProd": "ng serve --configuration production",
     "build": "node scripts/set-env.js && ng build",
     "watch": "ng build --watch --configuration development",
+    "watchprod": "ng build --watch --configuration production",
     "test": "ng test"
   },
   "private": true,
