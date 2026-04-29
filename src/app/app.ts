@@ -359,8 +359,7 @@ export class App implements OnInit, OnDestroy {
             this.githubService.getCommitDetail(c.sha).pipe(
               map((detail: GithubCommit) => {
                 completedDetails++;
-                this.loadingProgress =
-                  20 + Math.round((completedDetails / totalDetails) * 70);
+                this.loadingProgress = 20 + Math.round((completedDetails / totalDetails) * 70);
                 return detail;
               }),
             ),
@@ -372,9 +371,7 @@ export class App implements OnInit, OnDestroy {
               this.processFolderContributors(detailedCommits, data.allContributors);
 
               if (this.commitsByWeek.length > 0) {
-                this.selectedWeek = this.commitsByWeek[0].weekStart
-                  .toISOString()
-                  .split('T')[0];
+                this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
               }
 
               if (this.contributorsInFolder.length > 0) {
