@@ -816,8 +816,7 @@ export class App implements OnInit, OnDestroy {
         theme: this.isDarkMode() ? 'monokai' : 'default',
         lineNumbers: true,
         readOnly: true,
-        lineWrapping: true,
-        viewportMargin: Infinity,
+        lineWrapping: false,
       });
     } else if (this.codeMirrorEditor) {
       this.codeMirrorEditor.setValue(this.fileCode);
