@@ -623,31 +623,36 @@ export class App implements OnInit, OnDestroy {
     });
 
     // Analizar documentación de archivos únicos
-    const allUniqueFiles = Array.from(new Set<string>(
-      Object.values(contributorsData).flatMap(weeks =>
-        Object.values(weeks).flatMap(data => data.files)
-      )
-    ));
+    const allUniqueFiles = Array.from(
+      new Set<string>(
+        Object.values(contributorsData).flatMap((weeks) =>
+          Object.values(weeks).flatMap((data) => data.files),
+        ),
+      ),
+    );
 
     if (allUniqueFiles.length > 0) {
-      const fileRequests = allUniqueFiles.map(path =>
+      const fileRequests = allUniqueFiles.map((path) =>
         this.githubService.getFileContent(path).pipe(
-          map(content => ({ path, content: content.content ? atob(content.content.replace(/\s/g, '')) : '' }))
-        )
+          map((content) => ({
+            path,
+            content: content.content ? atob(content.content.replace(/\s/g, '')) : '',
+          })),
+        ),
       );
 
       // Usar forkJoin para procesar todos los archivos
       forkJoin(fileRequests).subscribe({
         next: (filesWithContent) => {
           const fileDocStatus: { [path: string]: boolean } = {};
-          filesWithContent.forEach(f => {
+          filesWithContent.forEach((f) => {
             fileDocStatus[f.path] = this.validateDocumentation(f.content, f.path);
           });
 
           // Actualizar contributorsData con el estado de documentación
-          Object.values(contributorsData).forEach(weeks => {
-            Object.values(weeks).forEach(data => {
-              data.files.forEach(f => {
+          Object.values(contributorsData).forEach((weeks) => {
+            Object.values(weeks).forEach((data) => {
+              data.files.forEach((f) => {
                 if (fileDocStatus[f]) {
                   data.documented.push(f);
                 } else {
@@ -658,16 +663,31 @@ export class App implements OnInit, OnDestroy {
           });
 
           // Finalmente procesar los colaboradores (esta parte es la que ya tenemos pero movida aquí)
-          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+          this.finalizeProcessFolderContributors(
+            contributorsData,
+            commits,
+            allGitHubContributors,
+            reversedWeeks,
+          );
         },
         error: (err) => {
           console.error('Error cargando contenidos de archivos:', err);
           // Si falla, procesamos sin info de documentación
-          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
-        }
+          this.finalizeProcessFolderContributors(
+            contributorsData,
+            commits,
+            allGitHubContributors,
+            reversedWeeks,
+          );
+        },
       });
     } else {
-      this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+      this.finalizeProcessFolderContributors(
+        contributorsData,
+        commits,
+        allGitHubContributors,
+        reversedWeeks,
+      );
     }
   }
 
@@ -675,7 +695,7 @@ export class App implements OnInit, OnDestroy {
     contributorsData: any,
     commits: GithubCommit[],
     allGitHubContributors: GithubCollaborator[],
-    reversedWeeks: string[]
+    reversedWeeks: string[],
   ) {
     this.contributorsInFolder = Object.entries(contributorsData)
       .map(([login, weeksData]: [string, any]) => {
