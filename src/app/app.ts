@@ -7,18 +7,11 @@ import {
   ViewChild,
   ElementRef,
 } from '@angular/core';
-import { GithubService, GithubCommit } from './github.service';
+import { GithubService, GithubCommit, GithubCollaborator, GithubContent } from './github.service';
 import { ConfigService } from './config.service';
 import { forkJoin, Subscription, interval } from 'rxjs';
 import { map } from 'rxjs/operators';
-
-/**
- * Interface representing GitHub collaborator information.
- */
-interface GithubCollaborator {
-  login: string;
-  avatar_url: string;
-}
+import { ToastrService } from 'ngx-toastr';
 
 /**
  * Interface representing code mirror editor instance.
@@ -29,7 +22,9 @@ interface CodeMirrorEditor {
   getWrapperElement(): HTMLElement;
 }
 
-declare var CodeMirror: any;
+declare const CodeMirror: {
+  (element: HTMLElement, options?: Record<string, unknown>): CodeMirrorEditor;
+};
 
 /**
  * Interface representing weekly statistics for the general chart.
@@ -56,7 +51,7 @@ interface ContributorWeekStats {
 /**
  * Interface representing general information about a contributor.
  */
-interface ContributorInfo {
+export interface ContributorInfo {
   login: string;
   avatarUrl?: string;
   totalFiles: number;
@@ -139,6 +134,7 @@ interface ContributorInfo {
   constructor(
     private githubService: GithubService,
     private configService: ConfigService,
+    private toastr: ToastrService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -331,9 +327,9 @@ interface ContributorInfo {
       allContributors: this.githubService
         .getCollaborators()
         .pipe(
-          map((collaborators: any[]) =>
+          map((collaborators: GithubCollaborator[]) =>
             collaborators.filter(
-              (c: any) =>
+              (c: GithubCollaborator) =>
                 c.permissions?.push &&
                 !excludedLogins.includes(c.login) &&
                 !(c.login && c.login.toLowerCase().includes('copilot')),
@@ -341,7 +337,7 @@ interface ContributorInfo {
           ),
         ),
     }).subscribe({
-      next: (data) => {
+      next: (data: { generalCommits: GithubCommit[], folderCommits: GithubCommit[], allContributors: GithubCollaborator[] }) => {
         console.log('Datos recibidos correctamente:', data);
         this.loadingProgress = 20; // 20% tras la primera carga
 
@@ -368,7 +364,7 @@ interface ContributorInfo {
           forkJoin(detailRequests).subscribe({
             next: (detailedCommits: GithubCommit[]) => {
               this.processCommits(data.generalCommits);
-              this.processFolderContributors(detailedCommits, data.allContributors as any[]);
+              this.processFolderContributors(detailedCommits, data.allContributors);
 
               if (this.commitsByWeek.length > 0) {
                 this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
@@ -385,7 +381,7 @@ interface ContributorInfo {
           });
         } else {
           this.processCommits(data.generalCommits);
-          this.processFolderContributors([], data.allContributors as any[]);
+          this.processFolderContributors([], data.allContributors);
 
           if (this.commitsByWeek.length > 0) {
             this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
@@ -452,7 +448,7 @@ interface ContributorInfo {
         return;
       }
 
-      const weekStart = this.getStartOfWeek(date);
+      const weekStart = App.getStartOfWeek(date);
       const weekKey = weekStart.toISOString().split('T')[0];
 
       if (!weeks[weekKey]) {
@@ -483,7 +479,7 @@ interface ContributorInfo {
    * @param commits Detailed list of commits affecting the folder.
    * @param allGitHubContributors List of all repository contributors.
    */
-  private processFolderContributors(commits: GithubCommit[], allGitHubContributors: any[] = []) {
+  private processFolderContributors(commits: GithubCommit[], allGitHubContributors: GithubCollaborator[] = []) {
     const contributorsData: {
       [login: string]: { [weekKey: string]: { messages: string[]; files: string[] } };
     } = {};
@@ -509,16 +505,14 @@ interface ContributorInfo {
       'exiic',
       'DiegoF1311',
     ];
-    const currentWeekStart = this.getStartOfWeek(now);
+    const currentWeekStart = App.getStartOfWeek(now);
     const startDate = new Date(2026, 3, 20);
-    const firstWeekStart = this.getStartOfWeek(startDate);
+    const firstWeekStart = App.getStartOfWeek(startDate);
 
     // Generar todas las semanas desde la primera hasta la actual
     const allWeeks: string[] = [];
-    const tempWeek = new Date(firstWeekStart);
-    while (tempWeek <= currentWeekStart) {
-      allWeeks.push(tempWeek.toISOString().split('T')[0]);
-      tempWeek.setDate(tempWeek.getDate() + 7);
+    for (let tempWeek = new Date(firstWeekStart); tempWeek <= currentWeekStart; tempWeek.setDate(tempWeek.getDate() + 7)) {
+      allWeeks.push(new Date(tempWeek).toISOString().split('T')[0]);
     }
     allWeeks.reverse(); // De más reciente a más antigua
     const reversedWeeks = [...allWeeks].reverse(); // De más antigua a más reciente para cálculo de deuda
@@ -555,7 +549,7 @@ interface ContributorInfo {
       if (!contributorsData[author]) {
         contributorsData[author] = {};
       }
-      const weekStart = this.getStartOfWeek(date);
+      const weekStart = App.getStartOfWeek(date);
       const weekKey = weekStart.toISOString().split('T')[0];
 
       if (!contributorsData[author][weekKey]) {
@@ -724,7 +718,7 @@ interface ContributorInfo {
    * @param date The date to calculate from.
    * @returns A new Date object set to the start of the week.
    */
-  private getStartOfWeek(date: Date): Date {
+  private static getStartOfWeek(date: Date): Date {
     const weekDate = new Date(date);
     weekDate.setHours(0, 0, 0, 0); // Resetear horas primero
     const day = weekDate.getDay();
@@ -753,11 +747,11 @@ interface ContributorInfo {
     this.fileCode = '';
 
     this.githubService.getFileContent(path).subscribe({
-      next: (data: { content: string }) => {
+      next: (data: GithubContent) => {
         try {
           // GitHub devuelve el contenido en base64
           // Decodificar Base64 manejando correctamente UTF-8
-          const base64 = data.content.replace(/\s/g, '');
+          const base64 = (data.content || '').replace(/\s/g, '');
           const binaryString = atob(base64);
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) {
@@ -777,7 +771,7 @@ interface ContributorInfo {
         }
       },
       error: (err: { message?: string }) => {
-        this.fileCode = 'Error al cargar el archivo: ' + (err.message || 'Desconocido');
+        this.fileCode = `Error al cargar el archivo: ${err.message || 'Desconocido'}`;
         this.loadingCode = false;
         this.cdr.detectChanges();
       },
@@ -789,7 +783,7 @@ interface ContributorInfo {
    */
   private initializeEditor() {
     if (this.editorContainer && !this.codeMirrorEditor) {
-      const mode = this.getMode(this.selectedFileName);
+      const mode = App.getMode(this.selectedFileName);
       this.codeMirrorEditor = CodeMirror(this.editorContainer.nativeElement, {
         value: this.fileCode,
         mode,
@@ -801,7 +795,7 @@ interface ContributorInfo {
       });
     } else if (this.codeMirrorEditor) {
       this.codeMirrorEditor.setValue(this.fileCode);
-      this.codeMirrorEditor.setOption('mode', this.getMode(this.selectedFileName));
+      this.codeMirrorEditor.setOption('mode', App.getMode(this.selectedFileName));
       this.codeMirrorEditor.setOption('theme', this.isDarkMode() ? 'monokai' : 'default');
     }
   }
@@ -811,7 +805,7 @@ interface ContributorInfo {
    * @param fileName The name of the file.
    * @returns The CodeMirror mode string.
    */
-  private getMode(fileName: string): string {
+  private static getMode(fileName: string): string {
     const ext = fileName.split('.').pop()?.toLowerCase();
     switch (ext) {
       case 'java':
@@ -850,7 +844,7 @@ interface ContributorInfo {
       link.click();
       window.URL.revokeObjectURL(url);
     } else {
-      alert('No se puede descargar un archivo con errores de contenido.');
+      this.toastr.error('No se puede descargar un archivo con errores de contenido.');
     }
   }
 

@@ -29,6 +29,20 @@ export interface GithubContent {
   path: string;
   type: string;
   url: string;
+  content?: string;
+  encoding?: string;
+}
+
+export interface GithubCollaborator {
+  login: string;
+  avatar_url: string;
+  permissions?: {
+    pull: boolean;
+    triage: boolean;
+    push: boolean;
+    maintain: boolean;
+    admin: boolean;
+  };
 }
 
 @Injectable({
@@ -45,7 +59,7 @@ export class GithubService {
   }
 
   private getHeaders() {
-    const headers: any = {};
+    const headers: Record<string, string> = {};
     if (this.token && this.token.trim() !== '') {
       // Usar el prefijo 'Bearer' que es el estándar actual para GitHub
       headers['Authorization'] = `Bearer ${this.token.trim()}`;
@@ -69,15 +83,15 @@ export class GithubService {
     return this.http.get<GithubCommit>(`${this.baseUrl}/${this.owner}/${this.repo}/commits/${sha}`, this.getHeaders());
   }
 
-  getFileContent(path: string): Observable<any> {
-    return this.http.get(`${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`, this.getHeaders());
+  getFileContent(path: string): Observable<GithubContent> {
+    return this.http.get<GithubContent>(`${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`, this.getHeaders());
   }
 
-  getContributors(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}/${this.owner}/${this.repo}/contributors`, this.getHeaders());
+  getContributors(): Observable<GithubCollaborator[]> {
+    return this.http.get<GithubCollaborator[]>(`${this.baseUrl}/${this.owner}/${this.repo}/contributors`, this.getHeaders());
   }
 
-  getCollaborators(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}/${this.owner}/${this.repo}/collaborators`, this.getHeaders());
+  getCollaborators(): Observable<GithubCollaborator[]> {
+    return this.http.get<GithubCollaborator[]>(`${this.baseUrl}/${this.owner}/${this.repo}/collaborators`, this.getHeaders());
   }
 }

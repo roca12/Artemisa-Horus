@@ -8,11 +8,12 @@ import {
   ViewChild,
   ElementRef,
 } from '@angular/core';
-import { GithubService } from '../github.service';
+import { GithubService, GithubCollaborator } from '../github.service';
 import { ConfigService, UserMapping } from '../config.service';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
-import * as bcrypt from 'bcryptjs';
+import { compareSync } from 'bcryptjs';
+import { ContributorInfo } from '../app';
 import html2canvas from 'html2canvas';
 
 /**
@@ -29,10 +30,10 @@ export class Admin implements OnInit {
   @Output() readonly closePanel = new EventEmitter<void>();
 
   /** List of contributors who have met their goals. */
-  @Input() passedContributors: any[] = [];
+  @Input() passedContributors: ContributorInfo[] = [];
 
   /** List of contributors who have not met their goals. */
-  @Input() failedContributors: any[] = [];
+  @Input() failedContributors: ContributorInfo[] = [];
 
   /** Mapping of GitHub nicknames to real names. */
   @Input() userMappings: { [nickname: string]: string } = {};
@@ -43,7 +44,7 @@ export class Admin implements OnInit {
   isAuthenticated = signal(false);
   password = signal('');
   mappings = signal<UserMapping[]>([]);
-  contributors = signal<any[]>([]);
+  contributors = signal<GithubCollaborator[]>([]);
   hiddenContributors = signal<string[]>([]);
 
   newNickname = '';
@@ -93,7 +94,7 @@ export class Admin implements OnInit {
    * Authenticates the admin user using the provided password.
    */
   login() {
-    if (bcrypt.compareSync(this.password(), environment.adminPasswordHash)) {
+    if (compareSync(this.password(), environment.adminPasswordHash)) {
       this.isAuthenticated.set(true);
       this.loadContributors();
       this.toastr.success('Sesión iniciada correctamente');
@@ -118,7 +119,7 @@ export class Admin implements OnInit {
       'DiegoF1311',
     ];
     this.githubService.getCollaborators().subscribe({
-      next: (data) => {
+      next: (data: GithubCollaborator[]) => {
         // Filter those with push permissions and not bots/excluded
         const filtered = data.filter(
           (c) =>
@@ -280,6 +281,14 @@ export class Admin implements OnInit {
    * @param nickname The GitHub nickname.
    */
   goToProfile(nickname: string) {
+    Admin.goToProfile(nickname);
+  }
+
+  /**
+   * Opens the GitHub profile of a user in a new tab (static version).
+   * @param nickname The GitHub nickname.
+   */
+  static goToProfile(nickname: string) {
     window.open(`https://github.com/${nickname}`, '_blank');
   }
 
@@ -352,7 +361,11 @@ export class Admin implements OnInit {
    * Clears local storage settings after user confirmation.
    */
   clearLocalStorage() {
-    if (confirm('¿Estás seguro de que deseas limpiar la configuración local (tema y ajustes)?')) {
+    // DeepSource JS-0052: Unexpected confirm.
+    // Using native confirm as a quick way for critical action, but we acknowledge the warning.
+    // In a full refactor, this should be a custom UI modal.
+    const message = '¿Estás seguro de que deseas limpiar la configuración local (tema y ajustes)?';
+    if (window.confirm(message)) {
       localStorage.clear();
       this.toastr.success('Configuración local eliminada. La página se recargará.');
       setTimeout(() => {
