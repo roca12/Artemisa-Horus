@@ -1,3 +1,7 @@
+* {
+  box-sizing: border-box;
+}
+
 :root {
   --primary-color: #2c3e50;
   --primary-dark: #1a252f;
@@ -31,21 +35,21 @@ body.dark-theme {
   --accent-color: #3498db;
   --accent-hover: #5dade2;
   --success-color: #2ecc71;
-  --danger-color: #e74c3c;
-  --background-color: #1a1a1a;
-  --card-background: #2d2d2d;
+  --danger-color: #ff5252;
+  --background-color: #121212;
+  --card-background: #1e1e1e;
   --text-color: #e0e0e0;
-  --text-muted: #a0a0a0;
-  --border-color: #404040;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --header-text: #e0e0e0;
+  --text-muted: #b0b0b0;
+  --border-color: #333333;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --header-text: #ffffff;
   --tab-header-bg: #252525;
-  --tab-btn-hover: #333333;
-  --badge-bg: #404040;
+  --tab-btn-hover: #2c2c2c;
+  --badge-bg: #333333;
   --card-alt-bg: #252525;
-  --stat-item-bg: #333333;
-  --card-active-bg: #1e3a5f;
+  --stat-item-bg: #2c2c2c;
+  --card-active-bg: #1a2a3a;
   --card-active-border: #3498db;
 }
 
@@ -322,6 +326,9 @@ section h2 {
 
 .tab-content {
   padding: 2.5rem;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
 }
 
 /* Week Detail Card */
@@ -405,16 +412,20 @@ section h2 {
 /* Table Controls */
 .table-controls {
   display: flex;
-  gap: 20px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 15px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
-  align-items: center;
+  position: relative;
+  z-index: 15;
+  background-color: var(--card-background);
+  width: 100%;
 }
 
 .search-box {
-  flex: 1;
-  min-width: 250px;
+  width: 100%;
   position: relative;
+  z-index: 10;
 }
 
 .search-box i {
@@ -434,6 +445,7 @@ section h2 {
   color: var(--text-color);
   font-family: inherit;
   transition: all 0.2s;
+  display: block;
 }
 
 .search-box input:focus {
@@ -446,6 +458,8 @@ section h2 {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
+  width: 100%;
 }
 
 .filter-box label {
@@ -462,6 +476,7 @@ section h2 {
   color: var(--text-color);
   font-family: inherit;
   cursor: pointer;
+  width: 100%;
 }
 
 .filter-box select:focus {
@@ -505,8 +520,8 @@ th {
   font-size: 0.8rem;
   letter-spacing: 0.5px;
   position: sticky;
-  top: 0;
-  z-index: 10;
+  top: -1px; /* Compensa posibles bordes */
+  z-index: 5;
 }
 
 th i {
@@ -740,6 +755,8 @@ tr:hover td {
   overflow: hidden; /* El scroll lo maneja CodeMirror */
   min-height: 200px;
   background-color: #1e1e1e;
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
 }
 
 .editor-container {
@@ -922,8 +939,7 @@ tr:hover td {
   }
 
   .table-controls {
-    flex-direction: column;
-    align-items: stretch;
+    gap: 15px;
   }
 
   .search-box {
@@ -932,6 +948,7 @@ tr:hover td {
 
   .filter-box {
     justify-content: space-between;
+    width: 100%;
   }
 
   .filter-box select {
@@ -940,8 +957,16 @@ tr:hover td {
 
   th,
   td {
-    padding: 12px 10px;
-    font-size: 0.85rem;
+    padding: 10px 8px;
+    font-size: 0.8rem;
+    word-break: break-word;
+  }
+
+  .table-container {
+    margin: 0 -10px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
   }
 
   .col-num {
