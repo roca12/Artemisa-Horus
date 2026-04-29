@@ -65,74 +65,74 @@ interface ContributorInfo {
   isCurrentGoalMet: boolean;
 }
 
-  /**
-   * Main application component.
-   */
-  @Component({
-    selector: 'app-root',
-    templateUrl: './app.html',
-    standalone: false,
-  })
-  export class App implements OnInit, OnDestroy {
-    /** Title of the application. */
-    protected readonly title = signal('GPC - Horus');
+/**
+ * Main application component.
+ */
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.html',
+  standalone: false,
+})
+export class App implements OnInit, OnDestroy {
+  /** Title of the application. */
+  protected readonly title = signal('GPC - Horus');
 
-    /** List of statistics by week. */
-    commitsByWeek: WeekStats[] = [];
+  /** List of statistics by week. */
+  commitsByWeek: WeekStats[] = [];
 
-    /** Currently selected week key. */
-    selectedWeek: string | null = null;
+  /** Currently selected week key. */
+  selectedWeek: string | null = null;
 
-    /** List of contributors in the analyzed folder. */
-    contributorsInFolder: ContributorInfo[] = [];
+  /** List of contributors in the analyzed folder. */
+  contributorsInFolder: ContributorInfo[] = [];
 
-    /** Currently selected contributor login. */
-    selectedContributor: string | null = null;
+  /** Currently selected contributor login. */
+  selectedContributor: string | null = null;
 
-    /** Search term for filtering contributors. */
-    searchTerm = '';
+  /** Search term for filtering contributors. */
+  searchTerm = '';
 
-    /** Filter for contributor status. */
-    statusFilter = 'all'; // 'all', 'met', 'failed'
+  /** Filter for contributor status. */
+  statusFilter = 'all'; // 'all', 'met', 'failed'
 
-    /** Signal indicating if dark mode is enabled. */
-    isDarkMode = signal(false);
+  /** Signal indicating if dark mode is enabled. */
+  isDarkMode = signal(false);
 
-    /** Indicates if data is currently loading. */
-    loading = true;
+  /** Indicates if data is currently loading. */
+  loading = true;
 
-    /** Current loading progress percentage. */
-    loadingProgress = 0;
+  /** Current loading progress percentage. */
+  loadingProgress = 0;
 
-    /** Error message if data loading fails. */
-    error: string | null = null;
+  /** Error message if data loading fails. */
+  error: string | null = null;
 
-    /** Container for the CodeMirror editor. */
-    @ViewChild('editorContainer') editorContainer?: ElementRef;
+  /** Container for the CodeMirror editor. */
+  @ViewChild('editorContainer') editorContainer?: ElementRef;
 
-    /** Indicates if the code viewer modal is shown. */
-    showModal = false;
+  /** Indicates if the code viewer modal is shown. */
+  showModal = false;
 
-    /** Content of the file being viewed. */
-    fileCode = '';
+  /** Content of the file being viewed. */
+  fileCode = '';
 
-    /** Name of the file being viewed. */
-    selectedFileName = '';
+  /** Name of the file being viewed. */
+  selectedFileName = '';
 
-    /** Indicates if the code is currently loading. */
-    loadingCode = false;
+  /** Indicates if the code is currently loading. */
+  loadingCode = false;
 
-    /** CodeMirror editor instance. */
-    codeMirrorEditor?: CodeMirrorEditor;
+  /** CodeMirror editor instance. */
+  codeMirrorEditor?: CodeMirrorEditor;
 
-    /** Indicates if the admin panel is shown. */
-    showAdmin = false;
+  /** Indicates if the admin panel is shown. */
+  showAdmin = false;
 
-    /** Mapping of GitHub nicknames to real names. */
-    userMappings: { [nickname: string]: string } = {};
+  /** Mapping of GitHub nicknames to real names. */
+  userMappings: { [nickname: string]: string } = {};
 
-    /** List of hidden contributor logins. */
-    hiddenContributors: string[] = [];
+  /** List of hidden contributor logins. */
+  hiddenContributors: string[] = [];
 
   private refreshSubscription?: Subscription;
 
