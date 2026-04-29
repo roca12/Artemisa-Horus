@@ -23,6 +23,7 @@
     "@types/codemirror": "^5.60.17",
     "bcryptjs": "^3.0.3",
     "codemirror": "^5.65.21",
+    "html2canvas": "^1.4.1",
     "ngx-toastr": "^20.0.5",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
@@ -32,6 +33,7 @@
     "@angular/cli": "^21.2.8",
     "@angular/compiler-cli": "^21.2.0",
     "@types/bcryptjs": "^2.4.6",
+    "@types/html2canvas": "^0.5.35",
     "dotenv": "^16.4.7",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",

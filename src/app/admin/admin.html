@@ -16,7 +16,7 @@
             placeholder="Contraseña"
             (keyup.enter)="login()"
             class="admin-input"
-          >
+          />
           <button (click)="login()" class="btn-primary">
             <i class="fas fa-sign-in-alt"></i> Entrar
           </button>
@@ -33,13 +33,13 @@
               [(ngModel)]="newNickname"
               placeholder="Nickname de GitHub"
               class="admin-input"
-            >
+            />
             <input
               type="text"
               [(ngModel)]="newRealName"
               placeholder="Nombre Real"
               class="admin-input"
-            >
+            />
             <button (click)="addMapping()" class="btn-add">
               <i class="fas fa-plus"></i> Agregar
             </button>
@@ -62,9 +62,11 @@
               <tbody>
                 <tr *ngFor="let c of getVisibleContributors()" [class.mapped]="isMapped(c.login)">
                   <td>
-                    <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login">
+                    <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login" />
                   </td>
-                  <td><strong>{{ c.login }}</strong></td>
+                  <td>
+                    <strong>{{ c.login }}</strong>
+                  </td>
                   <td>
                     <span *ngIf="isMapped(c.login)" class="real-name-tag">
                       {{ getRealName(c.login) }}
@@ -77,16 +79,34 @@
                     </span>
                   </td>
                   <td class="actions">
-                    <button (click)="goToProfile(c.login)" class="btn-icon btn-go" title="Ver Perfil">
+                    <button
+                      (click)="goToProfile(c.login)"
+                      class="btn-icon btn-go"
+                      title="Ver Perfil"
+                    >
                       <i class="fab fa-github"></i>
                     </button>
-                    <button (click)="toggleHideContributor(c.login)" class="btn-icon btn-hide" title="Ocultar de Página Principal">
+                    <button
+                      (click)="toggleHideContributor(c.login)"
+                      class="btn-icon btn-hide"
+                      title="Ocultar de Página Principal"
+                    >
                       <i class="fas fa-eye-slash"></i>
                     </button>
-                    <button *ngIf="!isMapped(c.login)" (click)="fillMapping(c.login)" class="btn-icon btn-add-small" title="Vincular Nombre">
+                    <button
+                      *ngIf="!isMapped(c.login)"
+                      (click)="fillMapping(c.login)"
+                      class="btn-icon btn-add-small"
+                      title="Vincular Nombre"
+                    >
                       <i class="fas fa-user-edit"></i>
                     </button>
-                    <button *ngIf="isMapped(c.login)" (click)="removeMapping(c.login)" class="btn-icon btn-delete" title="Eliminar Vínculo">
+                    <button
+                      *ngIf="isMapped(c.login)"
+                      (click)="removeMapping(c.login)"
+                      class="btn-icon btn-delete"
+                      title="Eliminar Vínculo"
+                    >
                       <i class="fas fa-unlink"></i>
                     </button>
                   </td>
@@ -99,7 +119,7 @@
           </div>
         </div>
 
-        <div class="mappings-list" style="margin-top: 2rem;">
+        <div class="mappings-list" style="margin-top: 2rem">
           <h4><i class="fas fa-eye-slash"></i> Contribuidores Ocultos</h4>
           <div class="table-scroll">
             <table class="admin-table hidden-table">
@@ -115,9 +135,11 @@
               <tbody>
                 <tr *ngFor="let c of getHiddenContributors()" [class.mapped]="isMapped(c.login)">
                   <td>
-                    <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login">
+                    <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login" />
                   </td>
-                  <td><strong>{{ c.login }}</strong></td>
+                  <td>
+                    <strong>{{ c.login }}</strong>
+                  </td>
                   <td>
                     <span *ngIf="isMapped(c.login)" class="real-name-tag">
                       {{ getRealName(c.login) }}
@@ -130,16 +152,34 @@
                     </span>
                   </td>
                   <td class="actions">
-                    <button (click)="goToProfile(c.login)" class="btn-icon btn-go" title="Ver Perfil">
+                    <button
+                      (click)="goToProfile(c.login)"
+                      class="btn-icon btn-go"
+                      title="Ver Perfil"
+                    >
                       <i class="fab fa-github"></i>
                     </button>
-                    <button (click)="toggleHideContributor(c.login)" class="btn-icon btn-show" title="Mostrar en Página Principal">
+                    <button
+                      (click)="toggleHideContributor(c.login)"
+                      class="btn-icon btn-show"
+                      title="Mostrar en Página Principal"
+                    >
                       <i class="fas fa-eye"></i>
                     </button>
-                    <button *ngIf="!isMapped(c.login)" (click)="fillMapping(c.login)" class="btn-icon btn-add-small" title="Vincular Nombre">
+                    <button
+                      *ngIf="!isMapped(c.login)"
+                      (click)="fillMapping(c.login)"
+                      class="btn-icon btn-add-small"
+                      title="Vincular Nombre"
+                    >
                       <i class="fas fa-user-edit"></i>
                     </button>
-                    <button *ngIf="isMapped(c.login)" (click)="removeMapping(c.login)" class="btn-icon btn-delete" title="Eliminar Vínculo">
+                    <button
+                      *ngIf="isMapped(c.login)"
+                      (click)="removeMapping(c.login)"
+                      class="btn-icon btn-delete"
+                      title="Eliminar Vínculo"
+                    >
                       <i class="fas fa-unlink"></i>
                     </button>
                   </td>
@@ -155,7 +195,61 @@
     </div>
 
     <div class="admin-footer">
+      <button *ngIf="isAuthenticated()" class="btn-download" (click)="downloadReport()">
+        <i class="fas fa-file-image"></i> Descargar Reporte
+      </button>
       <button class="btn-secondary" (click)="onClose()">Cerrar</button>
+    </div>
+
+    <!-- Hidden Report Template for Export -->
+    <div class="report-export-container" #reportContent>
+      <div class="report-header">
+        <div class="report-logo">
+          <i class="fas fa-eye"></i>
+          <span>HORUS GPC</span>
+        </div>
+        <div class="report-title">
+          <h2>Estado Semanal de Colaboradores</h2>
+          <p class="report-subtitle">Grupo de Programación Competitiva - UEB</p>
+          <p class="report-week">{{ weekRange }}</p>
+        </div>
+      </div>
+
+      <div class="report-body">
+        <div class="report-section passed">
+          <h3 class="section-title"><i class="fas fa-check-circle"></i> Al Día (Cumplen Meta)</h3>
+          <div class="report-grid">
+            <div *ngFor="let c of passedContributors" class="report-card">
+              <img [src]="c.avatarUrl" class="report-avatar" alt="" />
+              <div class="report-info">
+                <span class="report-name">{{ getDisplayName(c.login) }}</span>
+                <span class="report-stat">{{ c.totalFiles }} ejercicios</span>
+              </div>
+            </div>
+            <div *ngIf="passedContributors.length === 0" class="report-empty">
+              No hay colaboradores al día.
+            </div>
+          </div>
+        </div>
+
+        <div class="report-section failed">
+          <h3 class="section-title"><i class="fas fa-times-circle"></i> En Deuda (Pendientes)</h3>
+          <div class="report-grid">
+            <div *ngFor="let c of failedContributors" class="report-card debt">
+              <img [src]="c.avatarUrl" class="report-avatar" alt="" />
+              <div class="report-info">
+                <span class="report-name">{{ getDisplayName(c.login) }}</span>
+                <span class="report-stat debt">Debe: {{ c.totalDebt }}</span>
+              </div>
+            </div>
+            <div *ngIf="failedContributors.length === 0" class="report-empty">
+              No hay colaboradores en deuda.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-footer">Generado el {{ today | date: 'dd/MM/yyyy HH:mm' }}</div>
     </div>
   </div>
 </div>
