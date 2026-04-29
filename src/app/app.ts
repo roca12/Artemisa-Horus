@@ -270,7 +270,7 @@ export class App implements OnInit, OnDestroy {
     this.loading = true;
     this.loadingProgress = 0;
     this.error = null;
-    const folderPath = 'Resueltos por competidor';
+    const folderPath = 'Resueltos_por_competidor';
     const excludedLogins = [
       'github-copilot[bot]',
       'copilot',
@@ -317,7 +317,7 @@ export class App implements OnInit, OnDestroy {
 
   /**
    * Fetches data from GitHub, including commits and contributors.
-   * @param folderPath The path to the folder in the repository.
+   * @param folderPath The current path to the folder in the repository.
    * @param excludedLogins List of logins to exclude from the results.
    */
   private fetchGitHubData(folderPath: string, excludedLogins: string[]) {
@@ -337,7 +337,11 @@ export class App implements OnInit, OnDestroy {
           ),
         ),
     }).subscribe({
-      next: (data: { generalCommits: GithubCommit[], folderCommits: GithubCommit[], allContributors: GithubCollaborator[] }) => {
+      next: (data: {
+        generalCommits: GithubCommit[];
+        folderCommits: GithubCommit[];
+        allContributors: GithubCollaborator[];
+      }) => {
         console.log('Datos recibidos correctamente:', data);
         this.loadingProgress = 20; // 20% tras la primera carga
 
@@ -355,7 +359,8 @@ export class App implements OnInit, OnDestroy {
             this.githubService.getCommitDetail(c.sha).pipe(
               map((detail: GithubCommit) => {
                 completedDetails++;
-                this.loadingProgress = 20 + Math.round((completedDetails / totalDetails) * 70);
+                this.loadingProgress =
+                  20 + Math.round((completedDetails / totalDetails) * 70);
                 return detail;
               }),
             ),
@@ -367,7 +372,9 @@ export class App implements OnInit, OnDestroy {
               this.processFolderContributors(detailedCommits, data.allContributors);
 
               if (this.commitsByWeek.length > 0) {
-                this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
+                this.selectedWeek = this.commitsByWeek[0].weekStart
+                  .toISOString()
+                  .split('T')[0];
               }
 
               if (this.contributorsInFolder.length > 0) {
@@ -631,6 +638,18 @@ export class App implements OnInit, OnDestroy {
         };
       })
       .sort((a, b) => b.totalFiles - a.totalFiles);
+  }
+
+  /**
+   * Obtiene la clase de color según la deuda de ejercicios.
+   * @param debt Cantidad de ejercicios adeudados.
+   * @returns Clase CSS correspondiente.
+   */
+  getDebtClass(debt: number): string {
+    if (debt <= 0) return '';
+    if (debt === 1) return 'debt-yellow';
+    if (debt === 2) return 'debt-orange';
+    return 'debt-red';
   }
 
   /**

@@ -520,6 +520,10 @@ tr:hover td {
 .text-success { color: var(--success-color); font-weight: 700; }
 .text-danger { color: var(--danger-color); font-weight: 700; }
 
+.debt-yellow { color: #f1c40f; font-weight: 700; }
+.debt-orange { color: #e67e22; font-weight: 700; }
+.debt-red { color: #e74c3c; font-weight: 700; }
+
 /* Activity Details */
 .activity-details details {
   margin-bottom: 10px;
@@ -1117,6 +1121,53 @@ tr:hover td {
 .card-debt {
   color: var(--danger-color);
   font-weight: bold;
+}
+
+.card-debt.debt-yellow { color: #f1c40f; }
+.card-debt.debt-orange { color: #e67e22; }
+.card-debt.debt-red { color: #e74c3c; }
+
+.github-profile-btn {
+  background: var(--primary-color);
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.github-profile-btn:hover {
+  background: var(--accent-color);
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.4);
+}
+
+body.dark-theme .github-profile-btn {
+  background: #404040;
+}
+
+body.dark-theme .github-profile-btn:hover {
+  background: var(--accent-color);
+}
+
+.github-link-btn {
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+}
+
+.github-link-btn:hover {
+  color: var(--accent-color);
+  transform: scale(1.2);
 }
 
 .status-icon {

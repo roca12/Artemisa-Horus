@@ -116,6 +116,15 @@
                 <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
                 <span class="card-stats">{{ contributor.totalFiles }} ejercicios</span>
               </div>
+              <a
+                [href]="'https://github.com/' + contributor.login"
+                target="_blank"
+                class="github-profile-btn"
+                (click)="$event.stopPropagation()"
+                title="Ver perfil de GitHub"
+              >
+                <i class="fab fa-github"></i>
+              </a>
             </div>
           </div>
         </div>
@@ -138,8 +147,19 @@
               <i *ngIf="!contributor.avatarUrl" class="fas fa-user-circle"></i>
               <div class="card-info">
                 <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
-                <span class="card-debt">Debe: {{ contributor.totalDebt }} ejercicios</span>
+                <span class="card-debt" [ngClass]="getDebtClass(contributor.totalDebt)">
+                  Debe: {{ contributor.totalDebt }} ejercicios
+                </span>
               </div>
+              <a
+                [href]="'https://github.com/' + contributor.login"
+                target="_blank"
+                class="github-profile-btn"
+                (click)="$event.stopPropagation()"
+                title="Ver perfil de GitHub"
+              >
+                <i class="fab fa-github"></i>
+              </a>
             </div>
           </div>
         </div>
@@ -160,6 +180,14 @@
               <span class="nickname-hint" *ngIf="userMappings[selected.login.toLowerCase()]"
                 >({{ selected.login }})</span
               >
+              <a
+                [href]="'https://github.com/' + selected.login"
+                target="_blank"
+                class="github-link-btn"
+                title="Ver perfil de GitHub"
+              >
+                <i class="fab fa-github"></i>
+              </a>
             </h3>
             <p>
               Total de archivos/aportes desde el 20/04/2026:
@@ -218,7 +246,7 @@
                   </td>
                   <td class="hide-mobile">{{ week.count }} archivos</td>
                   <td>
-                    <span [class.text-danger]="week.debt > 0">
+                    <span [ngClass]="getDebtClass(week.debt)">
                       {{ week.debt > 0 ? week.debt + ' ejercicios' : '-' }}
                     </span>
                   </td>
