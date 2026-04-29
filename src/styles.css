@@ -90,7 +90,7 @@ header h1 {
 header h1 i {
   font-size: 3.5rem;
   color: var(--header-text);
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 header p {
@@ -133,7 +133,8 @@ body.dark-theme .repo-banner:hover {
   gap: 12px;
 }
 
-.theme-toggle-btn, .admin-toggle-btn {
+.theme-toggle-btn,
+.admin-toggle-btn {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: var(--header-text);
@@ -149,7 +150,8 @@ body.dark-theme .repo-banner:hover {
   backdrop-filter: blur(5px);
 }
 
-.theme-toggle-btn:hover, .admin-toggle-btn:hover {
+.theme-toggle-btn:hover,
+.admin-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: scale(1.1);
 }
@@ -158,7 +160,8 @@ body.dark-theme .repo-banner:hover {
   transform: rotate(15deg) scale(1.1);
 }
 
-body.dark-theme .theme-toggle-btn, body.dark-theme .admin-toggle-btn {
+body.dark-theme .theme-toggle-btn,
+body.dark-theme .admin-toggle-btn {
   background: rgba(0, 0, 0, 0.2);
   border-color: rgba(255, 255, 255, 0.1);
 }
@@ -215,8 +218,12 @@ section h2 {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .progress-bar-container {
@@ -227,7 +234,7 @@ section h2 {
   border-radius: 10px;
   margin: 1.5rem 0;
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .progress-bar {
@@ -252,7 +259,7 @@ section h2 {
   overflow-x: auto;
   border-bottom: 1px solid var(--border-color);
   scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none;  /* IE and Edge */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
 .tabs-header::-webkit-scrollbar {
@@ -343,7 +350,7 @@ section h2 {
   background: var(--stat-item-bg);
   padding: 1rem 1.5rem;
   border-radius: 10px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
   flex: 1;
 }
 
@@ -375,7 +382,7 @@ section h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
 .author-name {
@@ -483,7 +490,8 @@ table {
   border-spacing: 0;
 }
 
-th, td {
+th,
+td {
   padding: 16px 20px;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
@@ -517,8 +525,27 @@ tr:hover td {
   background-color: var(--tab-btn-hover);
 }
 
-.text-success { color: var(--success-color); font-weight: 700; }
-.text-danger { color: var(--danger-color); font-weight: 700; }
+.text-success {
+  color: var(--success-color);
+  font-weight: 700;
+}
+.text-danger {
+  color: var(--danger-color);
+  font-weight: 700;
+}
+
+.debt-yellow {
+  color: #f1c40f;
+  font-weight: 700;
+}
+.debt-orange {
+  color: #e67e22;
+  font-weight: 700;
+}
+.debt-red {
+  color: #e74c3c;
+  font-weight: 700;
+}
 
 /* Activity Details */
 .activity-details details {
@@ -530,7 +557,7 @@ tr:hover td {
 }
 
 .activity-details details[open] {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 }
 
 .activity-details summary {
@@ -562,7 +589,8 @@ tr:hover td {
   transform: rotate(90deg);
 }
 
-.file-list, .activity-list {
+.file-list,
+.activity-list {
   padding: 15px;
   margin: 0;
   list-style: none;
@@ -570,7 +598,8 @@ tr:hover td {
   border-top: 1px solid var(--border-color);
 }
 
-.file-item i, .activity-list li i {
+.file-item i,
+.activity-list li i {
   color: var(--text-muted);
   font-size: 1rem;
   width: 18px;
@@ -665,8 +694,14 @@ tr:hover td {
 }
 
 @keyframes modalFadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
@@ -735,7 +770,9 @@ tr:hover td {
   gap: 12px;
 }
 
-.btn-primary, .btn-secondary, .btn-download {
+.btn-primary,
+.btn-secondary,
+.btn-download {
   padding: 10px 20px;
   border-radius: 8px;
   font-weight: 600;
@@ -852,7 +889,8 @@ tr:hover td {
     right: 10px;
   }
 
-  .theme-toggle-btn, .admin-toggle-btn {
+  .theme-toggle-btn,
+  .admin-toggle-btn {
     width: 38px;
     height: 38px;
     font-size: 1rem;
@@ -902,7 +940,8 @@ tr:hover td {
     flex: 1;
   }
 
-  th, td {
+  th,
+  td {
     padding: 12px 10px;
     font-size: 0.85rem;
   }
@@ -935,7 +974,8 @@ tr:hover td {
     margin-right: 0;
   }
 
-  .btn-primary, .btn-secondary {
+  .btn-primary,
+  .btn-secondary {
     flex: 1;
   }
 }
@@ -964,7 +1004,8 @@ tr:hover td {
     flex-wrap: wrap;
   }
 
-  .header-avatar, .stats-header i {
+  .header-avatar,
+  .stats-header i {
     width: 40px;
     height: 40px;
     font-size: 2rem;
@@ -985,7 +1026,8 @@ tr:hover td {
   margin-bottom: 0.5rem;
 }
 
-.header-avatar, .stats-header i {
+.header-avatar,
+.stats-header i {
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -1054,7 +1096,10 @@ tr:hover td {
   border-radius: 8px;
   box-shadow: var(--shadow);
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s, border 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    border 0.2s;
   border: 2px solid transparent;
 }
 
@@ -1109,7 +1154,8 @@ tr:hover td {
   color: var(--text-color);
 }
 
-.card-stats, .card-debt {
+.card-stats,
+.card-debt {
   font-size: 0.8rem;
   color: var(--text-muted);
 }
@@ -1117,6 +1163,59 @@ tr:hover td {
 .card-debt {
   color: var(--danger-color);
   font-weight: bold;
+}
+
+.card-debt.debt-yellow {
+  color: #f1c40f;
+}
+.card-debt.debt-orange {
+  color: #e67e22;
+}
+.card-debt.debt-red {
+  color: #e74c3c;
+}
+
+.github-profile-btn {
+  background: var(--primary-color);
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.github-profile-btn:hover {
+  background: var(--accent-color);
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.4);
+}
+
+body.dark-theme .github-profile-btn {
+  background: #404040;
+}
+
+body.dark-theme .github-profile-btn:hover {
+  background: var(--accent-color);
+}
+
+.github-link-btn {
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+}
+
+.github-link-btn:hover {
+  color: var(--accent-color);
+  transform: scale(1.2);
 }
 
 .status-icon {
@@ -1134,4 +1233,3 @@ tr:hover td {
 .status-icon.danger {
   color: var(--danger-color);
 }
-

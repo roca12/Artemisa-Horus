@@ -270,7 +270,7 @@ export class App implements OnInit, OnDestroy {
     this.loading = true;
     this.loadingProgress = 0;
     this.error = null;
-    const folderPath = 'Resueltos por competidor';
+    const folderPath = 'Resueltos_por_competidor';
     const excludedLogins = [
       'github-copilot[bot]',
       'copilot',
@@ -317,7 +317,7 @@ export class App implements OnInit, OnDestroy {
 
   /**
    * Fetches data from GitHub, including commits and contributors.
-   * @param folderPath The path to the folder in the repository.
+   * @param folderPath The current path to the folder in the repository.
    * @param excludedLogins List of logins to exclude from the results.
    */
   private fetchGitHubData(folderPath: string, excludedLogins: string[]) {
@@ -642,6 +642,18 @@ export class App implements OnInit, OnDestroy {
         };
       })
       .sort((a, b) => b.totalFiles - a.totalFiles);
+  }
+
+  /**
+   * Obtiene la clase de color según la deuda de ejercicios.
+   * @param debt Cantidad de ejercicios adeudados.
+   * @returns Clase CSS correspondiente.
+   */
+  getDebtClass(debt: number): string {
+    if (debt <= 0) return '';
+    if (debt === 1) return 'debt-yellow';
+    if (debt === 2) return 'debt-orange';
+    return 'debt-red';
   }
 
   /**
