@@ -261,7 +261,9 @@ export class Admin implements OnInit {
    * @returns True if mapped, false otherwise.
    */
   isMapped(nickname: string): boolean {
-    return this.mappings().some((mapping) => mapping.githubNickname.toLowerCase() === nickname.toLowerCase());
+    return this.mappings().some(
+      (mapping) => mapping.githubNickname.toLowerCase() === nickname.toLowerCase(),
+    );
   }
 
   /**
