@@ -12,14 +12,37 @@ import { ConfigService } from './config.service';
 import { forkJoin, Subscription, interval } from 'rxjs';
 import { map } from 'rxjs/operators';
 
+/**
+ * Interface representing GitHub collaborator information.
+ */
+interface GithubCollaborator {
+  login: string;
+  avatar_url: string;
+}
+
+/**
+ * Interface representing code mirror editor instance.
+ */
+interface CodeMirrorEditor {
+  setValue(value: string): void;
+  setOption(option: string, value: unknown): void;
+  getWrapperElement(): HTMLElement;
+}
+
 declare var CodeMirror: any;
 
+/**
+ * Interface representing weekly statistics for the general chart.
+ */
 interface WeekStats {
   weekStart: Date;
   commitsCount: number;
   authors: { [login: string]: number };
 }
 
+/**
+ * Interface representing weekly statistics for a specific contributor.
+ */
 interface ContributorWeekStats {
   weekStart: Date;
   count: number;
@@ -30,6 +53,9 @@ interface ContributorWeekStats {
   debt: number;
 }
 
+/**
+ * Interface representing general information about a contributor.
+ */
 interface ContributorInfo {
   login: string;
   avatarUrl?: string;
@@ -39,35 +65,74 @@ interface ContributorInfo {
   isCurrentGoalMet: boolean;
 }
 
-@Component({
-  selector: 'app-root',
-  templateUrl: './app.html',
-  standalone: false,
-})
-export class App implements OnInit, OnDestroy {
-  protected readonly title = signal('GPC - Horus');
+  /**
+   * Main application component.
+   */
+  @Component({
+    selector: 'app-root',
+    templateUrl: './app.html',
+    standalone: false,
+  })
+  export class App implements OnInit, OnDestroy {
+    /** Title of the application. */
+    protected readonly title = signal('GPC - Horus');
 
-  commitsByWeek: WeekStats[] = [];
-  selectedWeek: string | null = null;
-  contributorsInFolder: ContributorInfo[] = [];
-  selectedContributor: string | null = null;
-  searchTerm = '';
-  statusFilter = 'all'; // 'all', 'met', 'failed'
-  isDarkMode = signal(false);
-  loading = true;
-  loadingProgress = 0;
-  error: string | null = null;
+    /** List of statistics by week. */
+    commitsByWeek: WeekStats[] = [];
 
-  // Modal para ver código
-  @ViewChild('editorContainer') editorContainer?: ElementRef;
-  showModal = false;
-  fileCode = '';
-  selectedFileName = '';
-  loadingCode = false;
-  codeMirrorEditor?: any;
-  showAdmin = false;
-  userMappings: { [nickname: string]: string } = {};
-  hiddenContributors: string[] = [];
+    /** Currently selected week key. */
+    selectedWeek: string | null = null;
+
+    /** List of contributors in the analyzed folder. */
+    contributorsInFolder: ContributorInfo[] = [];
+
+    /** Currently selected contributor login. */
+    selectedContributor: string | null = null;
+
+    /** Search term for filtering contributors. */
+    searchTerm = '';
+
+    /** Filter for contributor status. */
+    statusFilter = 'all'; // 'all', 'met', 'failed'
+
+    /** Signal indicating if dark mode is enabled. */
+    isDarkMode = signal(false);
+
+    /** Indicates if data is currently loading. */
+    loading = true;
+
+    /** Current loading progress percentage. */
+    loadingProgress = 0;
+
+    /** Error message if data loading fails. */
+    error: string | null = null;
+
+    /** Container for the CodeMirror editor. */
+    @ViewChild('editorContainer') editorContainer?: ElementRef;
+
+    /** Indicates if the code viewer modal is shown. */
+    showModal = false;
+
+    /** Content of the file being viewed. */
+    fileCode = '';
+
+    /** Name of the file being viewed. */
+    selectedFileName = '';
+
+    /** Indicates if the code is currently loading. */
+    loadingCode = false;
+
+    /** CodeMirror editor instance. */
+    codeMirrorEditor?: CodeMirrorEditor;
+
+    /** Indicates if the admin panel is shown. */
+    showAdmin = false;
+
+    /** Mapping of GitHub nicknames to real names. */
+    userMappings: { [nickname: string]: string } = {};
+
+    /** List of hidden contributor logins. */
+    hiddenContributors: string[] = [];
 
   private refreshSubscription?: Subscription;
 
@@ -77,6 +142,9 @@ export class App implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
   ) {}
 
+  /**
+   * Initializes the component, loading theme, settings, and data.
+   */
   ngOnInit() {
     this.initTheme();
     this.loadSettings();
@@ -88,6 +156,9 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Initializes the application theme based on saved settings or system preference.
+   */
   initTheme() {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -99,10 +170,16 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Toggles between light and dark themes.
+   */
   toggleTheme() {
     this.setDarkMode(!this.isDarkMode());
   }
 
+  /**
+   * Toggles the visibility of the admin panel.
+   */
   toggleAdmin() {
     this.showAdmin = !this.showAdmin;
     if (!this.showAdmin) {
@@ -110,13 +187,16 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Loads settings from the backend, including user mappings and hidden contributors.
+   */
   private loadSettings() {
     // Cargar mapeos desde backend
     this.configService.getMappings().subscribe({
       next: (mappings) => {
         const mappingsObj: { [nickname: string]: string } = {};
-        mappings.forEach((m) => {
-          mappingsObj[m.githubNickname.toLowerCase()] = m.realName;
+        mappings.forEach((mapping) => {
+          mappingsObj[mapping.githubNickname.toLowerCase()] = mapping.realName;
         });
         this.userMappings = mappingsObj;
         this.cdr.detectChanges();
@@ -153,10 +233,19 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Gets the display name for a contributor.
+   * @param login The GitHub login.
+   * @returns The display name (real name or login).
+   */
   getDisplayName(login: string): string {
     return this.userMappings[login.toLowerCase()] || login;
   }
 
+  /**
+   * Sets the dark mode status and updates the document theme.
+   * @param isDark True for dark mode, false for light mode.
+   */
   private setDarkMode(isDark: boolean) {
     this.isDarkMode.set(isDark);
     if (isDark) {
@@ -168,12 +257,18 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Lifecycle hook that cleans up subscriptions when the component is destroyed.
+   */
   ngOnDestroy() {
     if (this.refreshSubscription) {
       this.refreshSubscription.unsubscribe();
     }
   }
 
+  /**
+   * Loads data from the configuration service and then fetches GitHub data.
+   */
   loadData() {
     console.log('Iniciando carga de datos...');
     this.loading = true;
@@ -200,8 +295,8 @@ export class App implements OnInit, OnDestroy {
       next: (config) => {
         // Actualizar mapeos
         const mappingsObj: { [nickname: string]: string } = {};
-        config.mappings.forEach((m) => {
-          mappingsObj[m.githubNickname.toLowerCase()] = m.realName;
+        config.mappings.forEach((mapping) => {
+          mappingsObj[mapping.githubNickname.toLowerCase()] = mapping.realName;
         });
         this.userMappings = mappingsObj;
 
@@ -224,6 +319,11 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Fetches data from GitHub, including commits and contributors.
+   * @param folderPath The path to the folder in the repository.
+   * @param excludedLogins List of logins to exclude from the results.
+   */
   private fetchGitHubData(folderPath: string, excludedLogins: string[]) {
     forkJoin({
       generalCommits: this.githubService.getCommits(),
@@ -231,9 +331,9 @@ export class App implements OnInit, OnDestroy {
       allContributors: this.githubService
         .getCollaborators()
         .pipe(
-          map((collaborators) =>
+          map((collaborators: any[]) =>
             collaborators.filter(
-              (c) =>
+              (c: any) =>
                 c.permissions?.push &&
                 !excludedLogins.includes(c.login) &&
                 !(c.login && c.login.toLowerCase().includes('copilot')),
@@ -257,7 +357,7 @@ export class App implements OnInit, OnDestroy {
 
           const detailRequests = recentFolderCommits.map((c) =>
             this.githubService.getCommitDetail(c.sha).pipe(
-              map((detail) => {
+              map((detail: GithubCommit) => {
                 completedDetails++;
                 this.loadingProgress = 20 + Math.round((completedDetails / totalDetails) * 70);
                 return detail;
@@ -266,9 +366,9 @@ export class App implements OnInit, OnDestroy {
           );
 
           forkJoin(detailRequests).subscribe({
-            next: (detailedCommits) => {
+            next: (detailedCommits: GithubCommit[]) => {
               this.processCommits(data.generalCommits);
-              this.processFolderContributors(detailedCommits, data.allContributors);
+              this.processFolderContributors(detailedCommits, data.allContributors as any[]);
 
               if (this.commitsByWeek.length > 0) {
                 this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
@@ -285,7 +385,7 @@ export class App implements OnInit, OnDestroy {
           });
         } else {
           this.processCommits(data.generalCommits);
-          this.processFolderContributors([], data.allContributors);
+          this.processFolderContributors([], data.allContributors as any[]);
 
           if (this.commitsByWeek.length > 0) {
             this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
@@ -307,7 +407,11 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
-  private handleError(err: any) {
+  /**
+   * Handles errors occurring during data loading.
+   * @param err The error object.
+   */
+  private handleError(err: { status?: number; message?: string }) {
     console.error('Error detectado:', err);
     if (err.status === 401) {
       this.error = 'Error de autenticación: El Token de GitHub es inválido o ha expirado.';
@@ -321,6 +425,10 @@ export class App implements OnInit, OnDestroy {
     this.loading = false;
   }
 
+  /**
+   * Processes GitHub commits to group them by week and calculate general statistics.
+   * @param commits List of GitHub commits.
+   */
   private processCommits(commits: GithubCommit[]) {
     const weeks: { [key: string]: WeekStats } = {};
     const excludedLogins = [
@@ -349,7 +457,7 @@ export class App implements OnInit, OnDestroy {
 
       if (!weeks[weekKey]) {
         weeks[weekKey] = {
-          weekStart: weekStart,
+          weekStart,
           commitsCount: 0,
           authors: {},
         };
@@ -370,6 +478,11 @@ export class App implements OnInit, OnDestroy {
     );
   }
 
+  /**
+   * Processes folder-specific commits and contributor list to calculate individual statistics and debts.
+   * @param commits Detailed list of commits affecting the folder.
+   * @param allGitHubContributors List of all repository contributors.
+   */
   private processFolderContributors(commits: GithubCommit[], allGitHubContributors: any[] = []) {
     const contributorsData: {
       [login: string]: { [weekKey: string]: { messages: string[]; files: string[] } };
@@ -402,7 +515,7 @@ export class App implements OnInit, OnDestroy {
 
     // Generar todas las semanas desde la primera hasta la actual
     const allWeeks: string[] = [];
-    let tempWeek = new Date(firstWeekStart);
+    const tempWeek = new Date(firstWeekStart);
     while (tempWeek <= currentWeekStart) {
       allWeeks.push(tempWeek.toISOString().split('T')[0]);
       tempWeek.setDate(tempWeek.getDate() + 7);
@@ -482,11 +595,11 @@ export class App implements OnInit, OnDestroy {
 
           return {
             weekStart: new Date(weekKey),
-            count: count,
+            count,
             diff: 0,
             messages: data.messages,
             files: data.files,
-            isGoalMet: isGoalMet,
+            isGoalMet,
             debt: accumulatedDebt,
           };
         });
@@ -526,16 +639,28 @@ export class App implements OnInit, OnDestroy {
       .sort((a, b) => b.totalFiles - a.totalFiles);
   }
 
+  /**
+   * Selects a contributor to view their detailed statistics.
+   * @param login The GitHub login of the contributor.
+   */
   selectContributor(login: string) {
     this.selectedContributor = login;
     this.searchTerm = '';
     this.statusFilter = 'all';
   }
 
+  /**
+   * Selects a week to view its general statistics.
+   * @param weekKey The ISO date string of the week start.
+   */
   selectWeek(weekKey: string) {
     this.selectedWeek = weekKey;
   }
 
+  /**
+   * Gets the statistics for the currently selected week.
+   * @returns Week statistics or undefined.
+   */
   getSelectedWeekStats(): WeekStats | undefined {
     if (!this.selectedWeek) return undefined;
     return this.commitsByWeek.find(
@@ -543,10 +668,18 @@ export class App implements OnInit, OnDestroy {
     );
   }
 
+  /**
+   * Gets the general information for the currently selected contributor.
+   * @returns Contributor info or undefined.
+   */
   getSelectedContributorStats(): ContributorInfo | undefined {
     return this.contributorsInFolder.find((c) => c.login === this.selectedContributor);
   }
 
+  /**
+   * Gets filtered weekly statistics for the selected contributor based on search and status filters.
+   * @returns List of filtered contributor weekly statistics.
+   */
   getFilteredWeeklyStats(): ContributorWeekStats[] {
     const contributor = this.getSelectedContributorStats();
     if (!contributor) return [];
@@ -562,7 +695,7 @@ export class App implements OnInit, OnDestroy {
       const searchLower = this.searchTerm.toLowerCase();
       const matchesSearch =
         !this.searchTerm ||
-        week.messages.some((m) => m.toLowerCase().includes(searchLower)) ||
+        week.messages.some((msg) => msg.toLowerCase().includes(searchLower)) ||
         week.files.some((f) => f.toLowerCase().includes(searchLower)) ||
         week.weekStart.toLocaleDateString().includes(this.searchTerm);
 
@@ -570,27 +703,49 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Gets the list of contributors who have met the current goal.
+   * @returns List of successful contributors.
+   */
   getPassedContributors(): ContributorInfo[] {
     return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet);
   }
 
+  /**
+   * Gets the list of contributors who have not met the current goal.
+   * @returns List of contributors with debt.
+   */
   getFailedContributors(): ContributorInfo[] {
     return this.contributorsInFolder.filter((c) => !c.isCurrentGoalMet);
   }
 
+  /**
+   * Calculates the start of the week (Monday) for a given date.
+   * @param date The date to calculate from.
+   * @returns A new Date object set to the start of the week.
+   */
   private getStartOfWeek(date: Date): Date {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0); // Resetear horas primero
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Lunes como inicio
-    d.setDate(diff);
-    return d;
+    const weekDate = new Date(date);
+    weekDate.setHours(0, 0, 0, 0); // Resetear horas primero
+    const day = weekDate.getDay();
+    const diff = weekDate.getDate() - day + (day === 0 ? -6 : 1); // Lunes como inicio
+    weekDate.setDate(diff);
+    return weekDate;
   }
 
+  /**
+   * Gets the keys (logins) of the authors who contributed in a given week.
+   * @param authors Object with logins as keys and commit counts as values.
+   * @returns Array of logins.
+   */
   getAuthorKeys(authors: { [key: string]: number }): string[] {
     return Object.keys(authors);
   }
 
+  /**
+   * Fetches and displays the content of a file in a modal.
+   * @param path The path to the file in the repository.
+   */
   viewFileCode(path: string) {
     this.selectedFileName = path.split('/').pop() || path;
     this.showModal = true;
@@ -598,7 +753,7 @@ export class App implements OnInit, OnDestroy {
     this.fileCode = '';
 
     this.githubService.getFileContent(path).subscribe({
-      next: (data: any) => {
+      next: (data: { content: string }) => {
         try {
           // GitHub devuelve el contenido en base64
           // Decodificar Base64 manejando correctamente UTF-8
@@ -621,7 +776,7 @@ export class App implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         }
       },
-      error: (err) => {
+      error: (err: { message?: string }) => {
         this.fileCode = 'Error al cargar el archivo: ' + (err.message || 'Desconocido');
         this.loadingCode = false;
         this.cdr.detectChanges();
@@ -629,12 +784,15 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Initializes or updates the CodeMirror editor with the current file content.
+   */
   private initializeEditor() {
     if (this.editorContainer && !this.codeMirrorEditor) {
       const mode = this.getMode(this.selectedFileName);
       this.codeMirrorEditor = CodeMirror(this.editorContainer.nativeElement, {
         value: this.fileCode,
-        mode: mode,
+        mode,
         theme: this.isDarkMode() ? 'monokai' : 'default',
         lineNumbers: true,
         readOnly: true,
@@ -648,6 +806,11 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Determines the CodeMirror mode based on the file extension.
+   * @param fileName The name of the file.
+   * @returns The CodeMirror mode string.
+   */
   private getMode(fileName: string): string {
     const ext = fileName.split('.').pop()?.toLowerCase();
     switch (ext) {
@@ -674,6 +837,9 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Downloads the current file content as a text file.
+   */
   downloadFile() {
     if (this.fileCode && this.fileCode !== 'Error al decodificar el contenido del archivo.') {
       const blob = new Blob([this.fileCode], { type: 'text/plain;charset=utf-8' });
@@ -688,6 +854,9 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Closes the code viewer modal and clears the editor content.
+   */
   closeModal() {
     this.showModal = false;
     this.fileCode = '';

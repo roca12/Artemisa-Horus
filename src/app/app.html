@@ -236,7 +236,7 @@
   <!-- Modal de Administración -->
   <app-admin
     *ngIf="showAdmin"
-    (close)="toggleAdmin()"
+    (closePanel)="toggleAdmin()"
     [passedContributors]="getPassedContributors()"
     [failedContributors]="getFailedContributors()"
     [userMappings]="userMappings"
