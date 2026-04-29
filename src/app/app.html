@@ -234,5 +234,11 @@
     </div>
   </div>
   <!-- Modal de Administración -->
-  <app-admin *ngIf="showAdmin" (close)="toggleAdmin()"></app-admin>
+  <app-admin
+    *ngIf="showAdmin"
+    (close)="toggleAdmin()"
+    [passedContributors]="getPassedContributors()"
+    [failedContributors]="getFailedContributors()"
+    [userMappings]="userMappings"
+  ></app-admin>
 </div>

@@ -10,11 +10,13 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins(
+                .allowedOriginPatterns(
                         "https://horus.gpcueb.org",
                         "http://horus.gpcueb.org",
                         "http://localhost:4200",
-                        "http://localhost:8080"
+                        "http://localhost:8080",
+                        // Netlify previews for the horusgpc site (e.g., https://deploy-preview-5--horusgpc.netlify.app)
+                        "https://*--horusgpc.netlify.app"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")

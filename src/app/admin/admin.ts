@@ -1,9 +1,10 @@
-import { Component, OnInit, signal, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, signal, Output, EventEmitter, Input, ViewChild, ElementRef } from '@angular/core';
 import { GithubService } from '../github.service';
 import { ConfigService, UserMapping } from '../config.service';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
 import * as bcrypt from 'bcryptjs';
+import html2canvas from 'html2canvas';
 
 @Component({
   selector: 'app-admin',
@@ -13,6 +14,10 @@ import * as bcrypt from 'bcryptjs';
 })
 export class Admin implements OnInit {
   @Output() close = new EventEmitter<void>();
+  @Input() passedContributors: any[] = [];
+  @Input() failedContributors: any[] = [];
+  @Input() userMappings: { [nickname: string]: string } = {};
+  @ViewChild('reportContent') reportContent!: ElementRef;
 
   isAuthenticated = signal(false);
   password = signal('');
@@ -22,6 +27,8 @@ export class Admin implements OnInit {
 
   newNickname = '';
   newRealName = '';
+  today = new Date();
+  weekRange = '';
 
   constructor(
     private githubService: GithubService,
@@ -32,6 +39,23 @@ export class Admin implements OnInit {
   ngOnInit() {
     this.loadMappings();
     this.loadHidden();
+    this.calculateWeekRange();
+  }
+
+  calculateWeekRange() {
+    const now = new Date();
+    const start = new Date(now);
+    const day = start.getDay();
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Lunes
+    start.setDate(diff);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6); // Domingo
+    end.setHours(23, 59, 59, 999);
+
+    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
+    this.weekRange = `${start.toLocaleDateString('es-ES', options)} - ${end.toLocaleDateString('es-ES', options)}`;
   }
 
   login() {
@@ -190,17 +214,41 @@ export class Admin implements OnInit {
     return this.contributors().filter((c) => this.isHidden(c.login));
   }
 
-  clearLocalStorage() {
-    if (confirm('¿Estás seguro de que deseas limpiar la configuración local (tema y ajustes)?')) {
-      localStorage.clear();
-      this.toastr.success('Configuración local eliminada. La página se recargará.');
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    }
-  }
-
   onClose() {
     this.close.emit();
+  }
+
+  getDisplayName(login: string): string {
+    return this.userMappings[login.toLowerCase()] || login;
+  }
+
+  downloadReport() {
+    if (!this.reportContent) {
+      this.toastr.error('No se pudo encontrar el contenido del reporte');
+      return;
+    }
+
+    const element = this.reportContent.nativeElement;
+    // Asegurarse de que el elemento sea visible temporalmente para html2canvas si fuera necesario,
+    // pero con el enfoque de dejarlo fuera de la pantalla (top: -9999px) debería funcionar.
+
+    this.toastr.info('Generando imagen...');
+
+    html2canvas(element, {
+      backgroundColor: '#1e1e1e', // Fondo oscuro para que coincida con el tema
+      scale: 2, // Mejor calidad
+      useCORS: true, // Para las imágenes de avatar de GitHub
+      logging: false,
+    }).then((canvas) => {
+      const link = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      link.download = `Reporte_Semanal_GPC_${dateStr}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      this.toastr.success('Reporte descargado correctamente');
+    }).catch(err => {
+      console.error('Error al generar imagen:', err);
+      this.toastr.error('Error al generar el reporte');
+    });
   }
 }

@@ -155,10 +155,63 @@
     </div>
 
     <div class="admin-footer">
-      <button class="btn-danger" (click)="clearLocalStorage()">
-        <i class="fas fa-trash-alt"></i> Limpiar LocalStorage
+      <button *ngIf="isAuthenticated()" class="btn-download" (click)="downloadReport()">
+        <i class="fas fa-file-image"></i> Descargar Reporte
       </button>
       <button class="btn-secondary" (click)="onClose()">Cerrar</button>
+    </div>
+
+    <!-- Hidden Report Template for Export -->
+    <div class="report-export-container" #reportContent>
+      <div class="report-header">
+        <div class="report-logo">
+          <i class="fas fa-eye"></i>
+          <span>HORUS GPC</span>
+        </div>
+        <div class="report-title">
+          <h2>Estado Semanal de Colaboradores</h2>
+          <p class="report-subtitle">Grupo de Programación Competitiva - UEB</p>
+          <p class="report-week">{{ weekRange }}</p>
+        </div>
+      </div>
+
+      <div class="report-body">
+        <div class="report-section passed">
+          <h3 class="section-title"><i class="fas fa-check-circle"></i> Al Día (Cumplen Meta)</h3>
+          <div class="report-grid">
+            <div *ngFor="let c of passedContributors" class="report-card">
+              <img [src]="c.avatarUrl" class="report-avatar" alt="">
+              <div class="report-info">
+                <span class="report-name">{{ getDisplayName(c.login) }}</span>
+                <span class="report-stat">{{ c.totalFiles }} ejercicios</span>
+              </div>
+            </div>
+            <div *ngIf="passedContributors.length === 0" class="report-empty">
+              No hay colaboradores al día.
+            </div>
+          </div>
+        </div>
+
+        <div class="report-section failed">
+          <h3 class="section-title"><i class="fas fa-times-circle"></i> En Deuda (Pendientes)</h3>
+          <div class="report-grid">
+            <div *ngFor="let c of failedContributors" class="report-card debt">
+              <img [src]="c.avatarUrl" class="report-avatar" alt="">
+              <div class="report-info">
+                <span class="report-name">{{ getDisplayName(c.login) }}</span>
+                <span class="report-stat debt">Debe: {{ c.totalDebt }}</span>
+              </div>
+            </div>
+            <div *ngIf="failedContributors.length === 0" class="report-empty">
+              No hay colaboradores en deuda.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-footer">
+        Generado el {{ today | date:'dd/MM/yyyy HH:mm' }}
+      </div>
     </div>
   </div>
 </div>
