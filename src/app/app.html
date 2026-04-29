@@ -1,13 +1,26 @@
 <div class="container">
   <header>
-    <h1><i class="fas fa-eye"></i> {{ title() }}</h1>
-    <div class="repo-banner">
-      <p>
-        Repositorio:
-        <a href="https://github.com/roca12/GPC-UEB-Repo" target="_blank"
-          ><i class="fab fa-github"></i> roca12/GPC-UEB-Repo</a
-        >
-      </p>
+    <div class="header-bg-animation">
+      <div class="code-drop" style="left: 10%; animation-duration: 8s;">&lt;/&gt;</div>
+      <div class="code-drop" style="left: 25%; animation-duration: 10s;">&#123; &#125;</div>
+      <div class="code-drop" style="left: 40%; animation-duration: 7s;">if()</div>
+      <div class="code-drop" style="left: 55%; animation-duration: 9s;">while</div>
+      <div class="code-drop" style="left: 70%; animation-duration: 11s;">std::</div>
+      <div class="code-drop" style="left: 85%; animation-duration: 6s;">main()</div>
+    </div>
+    <div class="header-content">
+      <div class="header-logo-container">
+        <img src="/gpc_logo.png" alt="GPC Logo" class="header-logo">
+      </div>
+      <h1><i class="fas fa-eye"></i> {{ title() }}</h1>
+      <div class="repo-banner">
+        <p>
+          Repositorio:
+          <a href="https://github.com/roca12/GPC-UEB-Repo" target="_blank"
+            ><i class="fab fa-github"></i> roca12/GPC-UEB-Repo</a
+          >
+        </p>
+      </div>
     </div>
 
     <div class="header-actions">
@@ -42,7 +55,12 @@
 
   <div *ngIf="!loading && !error">
     <section *ngIf="commitsByWeek.length > 0; else noCommits">
-      <h2>Commits por Semana</h2>
+      <div class="section-header-with-action">
+        <h2>Commits por Semana</h2>
+        <button (click)="toggleCommitsHelpModal()" class="help-btn" title="¿Qué es un commit?">
+          <i class="fas fa-question-circle"></i> Ayuda
+        </button>
+      </div>
 
       <div class="tabs-container">
         <div class="tabs-header">
@@ -93,7 +111,13 @@
     </ng-template>
 
     <section *ngIf="contributorsInFolder.length > 0; else noContributors">
-      <h2>Actividad por Competidor</h2>
+      <div class="section-header-with-action">
+        <h2>Actividad por Competidor</h2>
+        <button (click)="toggleHelpModal()" class="help-btn" title="¿Cómo interpretar los datos?">
+          <i class="fas fa-question-circle"></i> Ayuda
+        </button>
+      </div>
+      <p class="section-subtitle"><i class="fas fa-mouse-pointer"></i> Haz clic en las tarjetas para ver los detalles de cada competidor.</p>
 
       <div class="competitors-split">
         <div class="competitors-column">
@@ -115,6 +139,12 @@
               <div class="card-info">
                 <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
                 <span class="card-stats">{{ contributor.totalFiles }} ejercicios</span>
+                <span class="doc-stats">
+                  <i class="fas fa-file-signature text-success" title="Documentados"></i>
+                  {{ contributor.totalDocumented }}
+                  <i class="fas fa-file-excel text-danger" title="No documentados"></i>
+                  {{ contributor.totalUndocumented }}
+                </span>
               </div>
               <a
                 [href]="'https://github.com/' + contributor.login"
@@ -149,6 +179,12 @@
                 <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
                 <span class="card-debt" [ngClass]="getDebtClass(contributor.totalDebt)">
                   Debe: {{ contributor.totalDebt }} ejercicios
+                </span>
+                <span class="doc-stats">
+                  <i class="fas fa-file-signature text-success" title="Documentados"></i>
+                  {{ contributor.totalDocumented }}
+                  <i class="fas fa-file-excel text-danger" title="No documentados"></i>
+                  {{ contributor.totalUndocumented }}
                 </span>
               </div>
               <a
@@ -214,21 +250,22 @@
             </div>
           </div>
 
-          <div class="table-container">
+          <div class="table-container" id="stats-table">
             <table>
               <thead>
                 <tr>
-                  <th class="col-num hide-mobile">#</th>
+                  <th class="col-num">#</th>
                   <th><i class="fas fa-calendar"></i> Semana</th>
                   <th><i class="fas fa-check-double"></i> Estado</th>
-                  <th class="hide-mobile"><i class="fas fa-file-code"></i> Nuevos Aportes</th>
+                  <th><i class="fas fa-file-code"></i> Nuevos Aportes</th>
+                  <th><i class="fas fa-file-signature"></i> Doc.</th>
                   <th><i class="fas fa-exclamation-circle"></i> Deuda</th>
                   <th><i class="fas fa-list-ul"></i> Actividad</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let week of getFilteredWeeklyStats(); let i = index">
-                  <td class="col-num hide-mobile">{{ i + 1 }}</td>
+                <tr *ngFor="let week of getPaginatedWeeklyStats(); let i = index">
+                  <td class="col-num">{{ (currentPage - 1) * pageSize + i + 1 }}</td>
                   <td>
                     <strong>{{ week.weekStart | date: 'dd/MM/yyyy' }}</strong>
                   </td>
@@ -244,7 +281,16 @@
                       <i class="fas fa-times-circle"></i>
                     </span>
                   </td>
-                  <td class="hide-mobile">{{ week.count }} archivos</td>
+                  <td>{{ week.count }} archivos</td>
+                  <td>
+                    <span class="text-success" title="Correcto">
+                      <i class="fas fa-check"></i> {{ week.documentedCount }}
+                    </span>
+                    /
+                    <span class="text-danger" title="Incorrecto">
+                      <i class="fas fa-times"></i> {{ week.undocumentedCount }}
+                    </span>
+                  </td>
                   <td>
                     <span [ngClass]="getDebtClass(week.debt)">
                       {{ week.debt > 0 ? week.debt + ' ejercicios' : '-' }}
@@ -259,8 +305,19 @@
                           >
                         </summary>
                         <ul class="file-list">
-                          <li *ngFor="let file of week.files" class="file-item">
-                            <i class="fas fa-file-alt"></i>
+                          <li *ngFor="let file of week.documentedFiles" class="file-item documented" title="Correctamente documentado">
+                            <i class="fas fa-file-signature text-success"></i>
+                            <span class="file-name">{{ file }}</span>
+                            <button
+                              class="view-code-btn"
+                              (click)="viewFileCode(file)"
+                              title="Ver código"
+                            >
+                              <i class="fas fa-eye"></i>
+                            </button>
+                          </li>
+                          <li *ngFor="let file of week.undocumentedFiles" class="file-item undocumented" title="Sin documentación estándar">
+                            <i class="fas fa-file-excel text-danger"></i>
                             <span class="file-name">{{ file }}</span>
                             <button
                               class="view-code-btn"
@@ -293,6 +350,62 @@
               </tbody>
             </table>
           </div>
+
+          <!-- Paginación -->
+          <div class="pagination-container" *ngIf="getTotalPages() > 1">
+            <button
+              class="pagination-btn"
+              [disabled]="currentPage === 1"
+              (click)="goToPage(currentPage - 1)"
+              title="Anterior"
+            >
+              <i class="fas fa-chevron-left"></i>
+            </button>
+
+            <span class="pagination-info">
+              Página <strong>{{ currentPage }}</strong> de <strong>{{ getTotalPages() }}</strong>
+            </span>
+
+            <button
+              class="pagination-btn"
+              [disabled]="currentPage === getTotalPages()"
+              (click)="goToPage(currentPage + 1)"
+              title="Siguiente"
+            >
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+
+          <!-- Estándar de Documentación -->
+          <div class="documentation-standard-card">
+            <h4><i class="fas fa-file-invoice"></i> Estándar de Documentación</h4>
+            <p>Para que un ejercicio sea contabilizado como documentado, debe incluir al inicio:</p>
+
+            <div class="doc-examples">
+              <div class="doc-example">
+                <h5><i class="fab fa-java"></i> Java / <i class="fas fa-code"></i> C++</h5>
+                <pre>
+/*
+ * Autor: [Nombre]
+ * Problema: [Nombre del Problema]
+ * Juez online: [Nombre del Juez]
+ * Veredicto: Accepted / Correct / Yes / Ok
+ * URL: [Link al problema]
+ */</pre>
+              </div>
+              <div class="doc-example">
+                <h5><i class="fab fa-python"></i> Python</h5>
+                <pre>
+# Autor: [Nombre]
+# Problema: [Nombre del Problema]
+# Juez online: [Nombre del Juez]
+# Veredicto: Accepted / Correct / Yes / Ok
+# URL: [Link al problema]</pre>
+              </div>
+            </div>
+
+            <small>* Veredicto debe ser <strong>Accepted</strong>, <strong>Correct</strong>, <strong>Yes</strong> o <strong>Ok</strong>.</small>
+          </div>
         </div>
       </div>
     </section>
@@ -305,6 +418,93 @@
         </p>
       </section>
     </ng-template>
+  </div>
+
+  <!-- Modal de Ayuda -->
+  <div class="modal-backdrop" *ngIf="showHelpModal" (click)="toggleHelpModal()">
+    <div class="modal-content help-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-question-circle"></i> Guía de Interpretación de Datos</h3>
+        <button class="close-btn" (click)="toggleHelpModal()">&times;</button>
+      </div>
+      <div class="modal-body help-body">
+        <section class="help-section">
+          <h4><i class="fas fa-id-card"></i> Tarjetas de Competidor</h4>
+          <p>Las tarjetas muestran un resumen rápido del estado actual del competidor:</p>
+          <ul>
+            <li><strong>Ejercicios:</strong> Cantidad total de archivos únicos (.java, .cpp, .py) entregados.</li>
+            <li>
+              <strong>Iconos de Documentación:</strong>
+              <span class="text-success"><i class="fas fa-file-signature"></i> N</span> indica ejercicios correctamente documentados.
+              <span class="text-danger"><i class="fas fa-file-excel"></i> N</span> indica ejercicios que no cumplen el estándar.
+            </li>
+            <li><strong>Deuda (Rojo):</strong> Cantidad de ejercicios que le faltan para estar al día con la meta semanal (3 por semana).</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h4><i class="fas fa-table"></i> Tabla de Actividad</h4>
+          <p>Muestra el desglose detallado por cada semana:</p>
+          <ul>
+            <li><strong>Estado:</strong> <span class="text-success"><i class="fas fa-check-circle"></i></span> Meta cumplida (sin deuda), <span class="text-danger"><i class="fas fa-times-circle"></i></span> Meta pendiente.</li>
+            <li><strong>Doc.:</strong> Relación de ejercicios <span class="text-success">Correctos</span> / <span class="text-danger">Incorrectos</span> en esa semana específica.</li>
+            <li><strong>Deuda:</strong> Ejercicios acumulados pendientes al finalizar esa semana.</li>
+            <li><strong>Actividad:</strong> Despliegue para ver los nombres de los archivos y los mensajes de los commits. Los archivos muestran iconos (<span class="text-success"><i class="fas fa-file-signature"></i></span> o <span class="text-danger"><i class="fas fa-file-excel"></i></span>) indicando si cumplen el estándar de documentación.</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h4><i class="fas fa-bullseye"></i> Reglas de la Meta</h4>
+          <p>La meta es entregar <strong>3 ejercicios semanales</strong>. La deuda es acumulativa; si una semana entregas 5, compensas 2 ejercicios de deuda de semanas anteriores.</p>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" (click)="toggleHelpModal()">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Ayuda (Commits) -->
+  <div class="modal-backdrop" *ngIf="showCommitsHelpModal" (click)="toggleCommitsHelpModal()">
+    <div class="modal-content help-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><i class="fas fa-question-circle"></i> Guía de Commits y Entregas</h3>
+        <button class="close-btn" (click)="toggleCommitsHelpModal()">&times;</button>
+      </div>
+      <div class="modal-body help-body">
+        <section class="help-section">
+          <h4><i class="fas fa-code-commit"></i> ¿Qué es un Commit?</h4>
+          <p>Un <strong>commit</strong> es como una "captura" o registro de los cambios que realizas en el código del repositorio. Cada vez que guardas y envías tus avances a GitHub, generas un commit.</p>
+          <ul>
+            <li>Un commit puede contener uno o varios archivos.</li>
+            <li>No todos los archivos en un commit son necesariamente ejercicios resueltos.</li>
+            <li>Los mensajes de commit ayudan a entender qué se cambió en esa versión.</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h4><i class="fas fa-equals"></i> Commit vs. Resueltos por Competidor</h4>
+          <p>Es importante entender que un commit <strong>no es lo mismo</strong> que un ejercicio resuelto:</p>
+          <ul>
+            <li><strong>Commits por Semana:</strong> Cuenta cuántas veces has enviado cambios al repositorio general, sin importar el contenido.</li>
+            <li><strong>Resueltos por Competidor:</strong> Solo cuenta los archivos de código (.java, .cpp, .py) que son ejercicios nuevos y únicos.</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h4><i class="fas fa-check-double"></i> Criterios de Aceptación</h4>
+          <p>Para que un aporte sea contabilizado en la meta de "Resueltos por Competidor", debe cumplir con:</p>
+          <ul>
+            <li>Tener el estándar de documentación correcto al inicio del archivo.</li>
+            <li>El campo <strong>Veredicto</strong> en la documentación debe ser explícitamente: <strong>Accepted</strong>, <strong>Correct</strong>, <strong>Yes</strong> o <strong>Ok</strong>.</li>
+            <li>Cualquier otro veredicto (como Wrong Answer, TLE, etc.) no sumará a la meta semanal.</li>
+          </ul>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" (click)="toggleCommitsHelpModal()">Entendido</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal para ver código -->

@@ -46,6 +46,10 @@ interface ContributorWeekStats {
   files: string[];
   isGoalMet: boolean;
   debt: number;
+  documentedCount: number;
+  undocumentedCount: number;
+  documentedFiles: string[];
+  undocumentedFiles: string[];
 }
 
 /**
@@ -58,6 +62,8 @@ export interface ContributorInfo {
   weeklyStats: ContributorWeekStats[];
   totalDebt: number;
   isCurrentGoalMet: boolean;
+  totalDocumented: number;
+  totalUndocumented: number;
 }
 
 /**
@@ -89,6 +95,12 @@ export class App implements OnInit, OnDestroy {
 
   /** Filter for contributor status. */
   statusFilter = 'all'; // 'all', 'met', 'failed'
+
+  /** Current page for table pagination. */
+  currentPage = 1;
+
+  /** Number of items per page in the statistics table. */
+  pageSize = 5;
 
   /** Signal indicating if dark mode is enabled. */
   isDarkMode = signal(false);
@@ -164,6 +176,26 @@ export class App implements OnInit, OnDestroy {
     } else {
       this.setDarkMode(false);
     }
+  }
+
+  /** Indicates if the help modal is shown. */
+  showHelpModal = false;
+
+  /** Indicates if the commits help modal is shown. */
+  showCommitsHelpModal = false;
+
+  /**
+   * Toggles the help modal.
+   */
+  toggleHelpModal() {
+    this.showHelpModal = !this.showHelpModal;
+  }
+
+  /**
+   * Toggles the commits help modal.
+   */
+  toggleCommitsHelpModal() {
+    this.showCommitsHelpModal = !this.showCommitsHelpModal;
   }
 
   /**
@@ -488,7 +520,14 @@ export class App implements OnInit, OnDestroy {
     allGitHubContributors: GithubCollaborator[] = [],
   ) {
     const contributorsData: {
-      [login: string]: { [weekKey: string]: { messages: string[]; files: string[] } };
+      [login: string]: {
+        [weekKey: string]: {
+          messages: string[];
+          files: string[];
+          documented: string[];
+          undocumented: string[];
+        };
+      };
     } = {};
 
     // Inicializar datos para TODOS los colaboradores de GitHub (si no están ocultos)
@@ -564,38 +603,109 @@ export class App implements OnInit, OnDestroy {
       const weekKey = weekStart.toISOString().split('T')[0];
 
       if (!contributorsData[author][weekKey]) {
-        contributorsData[author][weekKey] = { messages: [], files: [] };
+        contributorsData[author][weekKey] = {
+          messages: [],
+          files: [],
+          documented: [],
+          undocumented: [],
+        };
       }
 
       contributorsData[author][weekKey].messages.push(commit.commit.message);
       relevantFiles.forEach((file) => {
         if (!contributorsData[author][weekKey].files.includes(file)) {
           contributorsData[author][weekKey].files.push(file);
+          // Por defecto lo ponemos como no documentado hasta que se analice
+          // Pero en este punto no tenemos el contenido.
+          // El análisis de documentación se hará después o aquí si tenemos el contenido.
         }
       });
     });
 
+    // Analizar documentación de archivos únicos
+    const allUniqueFiles = Array.from(new Set<string>(
+      Object.values(contributorsData).flatMap(weeks =>
+        Object.values(weeks).flatMap(data => data.files)
+      )
+    ));
+
+    if (allUniqueFiles.length > 0) {
+      const fileRequests = allUniqueFiles.map(path =>
+        this.githubService.getFileContent(path).pipe(
+          map(content => ({ path, content: content.content ? atob(content.content.replace(/\s/g, '')) : '' }))
+        )
+      );
+
+      // Usar forkJoin para procesar todos los archivos
+      forkJoin(fileRequests).subscribe({
+        next: (filesWithContent) => {
+          const fileDocStatus: { [path: string]: boolean } = {};
+          filesWithContent.forEach(f => {
+            fileDocStatus[f.path] = this.validateDocumentation(f.content, f.path);
+          });
+
+          // Actualizar contributorsData con el estado de documentación
+          Object.values(contributorsData).forEach(weeks => {
+            Object.values(weeks).forEach(data => {
+              data.files.forEach(f => {
+                if (fileDocStatus[f]) {
+                  data.documented.push(f);
+                } else {
+                  data.undocumented.push(f);
+                }
+              });
+            });
+          });
+
+          // Finalmente procesar los colaboradores (esta parte es la que ya tenemos pero movida aquí)
+          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+        },
+        error: (err) => {
+          console.error('Error cargando contenidos de archivos:', err);
+          // Si falla, procesamos sin info de documentación
+          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+        }
+      });
+    } else {
+      this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+    }
+  }
+
+  private finalizeProcessFolderContributors(
+    contributorsData: any,
+    commits: GithubCommit[],
+    allGitHubContributors: GithubCollaborator[],
+    reversedWeeks: string[]
+  ) {
     this.contributorsInFolder = Object.entries(contributorsData)
-      .map(([login, weeksData]) => {
+      .map(([login, weeksData]: [string, any]) => {
         let totalDelivered = 0;
+        let totalDocumented = 0;
+        let totalUndocumented = 0;
         const goalPerWeek = 3;
         let accumulatedDebt = 0;
 
         // Procesar semanas de antigua a reciente para calcular deuda acumulada correctamente
         const weeklyStatsChronological: ContributorWeekStats[] = reversedWeeks.map((weekKey) => {
-          const data = weeksData[weekKey] || { messages: [], files: [] };
+          const data = weeksData[weekKey] || {
+            messages: [],
+            files: [],
+            documented: [],
+            undocumented: [],
+          };
           const count = data.files.length; // Ejercicios únicos de esta semana
           totalDelivered += count;
 
-          // Lógica de deuda:
-          // 1. Añadimos la meta de la semana actual a la deuda acumulada
-          accumulatedDebt += goalPerWeek;
+          const documentedCount = data.documented.length;
+          const undocumentedCount = data.undocumented.length;
 
-          // 2. Restamos los ejercicios entregados esta semana de la deuda acumulada
-          // (Si entrega más de la deuda, la deuda queda en 0, pero no negativa para la próxima semana)
+          totalDocumented += documentedCount;
+          totalUndocumented += undocumentedCount;
+
+          // Lógica de deuda:
+          accumulatedDebt += goalPerWeek;
           accumulatedDebt = Math.max(0, accumulatedDebt - count);
 
-          // Se cumple la meta si al finalizar la semana la deuda es 0
           const isGoalMet = accumulatedDebt === 0;
 
           return {
@@ -606,6 +716,10 @@ export class App implements OnInit, OnDestroy {
             files: data.files,
             isGoalMet,
             debt: accumulatedDebt,
+            documentedCount,
+            undocumentedCount,
+            documentedFiles: data.documented,
+            undocumentedFiles: data.undocumented,
           };
         });
 
@@ -639,9 +753,53 @@ export class App implements OnInit, OnDestroy {
           weeklyStats,
           totalDebt: finalDebt,
           isCurrentGoalMet: finalDebt === 0,
+          totalDocumented,
+          totalUndocumented,
         };
       })
       .sort((a, b) => b.totalFiles - a.totalFiles);
+
+    // Notificar cambio
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Valida si el contenido de un archivo cumple con el estándar de documentación.
+   * @param content Contenido del archivo.
+   * @param fileName Nombre del archivo para determinar el lenguaje.
+   * @returns Verdadero si cumple el estándar.
+   */
+  private validateDocumentation(content: string, fileName: string): boolean {
+    if (!content) return false;
+
+    const lowerName = fileName.toLowerCase();
+    let regex: RegExp;
+
+    // Estándar:
+    /*
+     * Autor:*
+     * Problema: *
+     * Juez online: *
+     * Veredicto: Accepted
+     * URL: *
+     * */
+    // Veredicto puede ser Accepted, Correct o Yes (case insensitive)
+
+    const pattern =
+      'Autor:.*\\s*' +
+      '\\*\\s*Problema:.*\\s*' +
+      '\\*\\s*Juez online:.*\\s*' +
+      '\\*\\s*Veredicto:\\s*(Accepted|Correct|Yes|Ok).*\\s*' +
+      '\\*\\s*URL:.*';
+
+    // Aceptar estilo de comentario /* ... */ o # (para Python)
+    // El patrón busca la secuencia de Autor, Problema, etc. precedidos por * o #
+    const combinedPattern = pattern.replace(/\\\*/g, '[*#]');
+
+    // Permitimos que empiece con /* o simplemente con los campos si es Python
+    regex = new RegExp('(\\/\\*|#).*' + combinedPattern, 'i');
+
+    return regex.test(content);
   }
 
   /**
@@ -664,6 +822,15 @@ export class App implements OnInit, OnDestroy {
     this.selectedContributor = login;
     this.searchTerm = '';
     this.statusFilter = 'all';
+    this.currentPage = 1;
+
+    // Desplazar a la tabla de estadísticas
+    setTimeout(() => {
+      const element = document.getElementById('stats-table');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   }
 
   /**
@@ -701,7 +868,7 @@ export class App implements OnInit, OnDestroy {
     const contributor = this.getSelectedContributorStats();
     if (!contributor) return [];
 
-    return contributor.weeklyStats.filter((week) => {
+    const filtered = contributor.weeklyStats.filter((week) => {
       // Filtro por estado
       const matchesStatus =
         this.statusFilter === 'all' ||
@@ -716,8 +883,48 @@ export class App implements OnInit, OnDestroy {
         week.files.some((f) => f.toLowerCase().includes(searchLower)) ||
         week.weekStart.toLocaleDateString().includes(this.searchTerm);
 
-      return matchesStatus && matchesSearch;
+      if (matchesStatus && matchesSearch) {
+        return true;
+      }
+      return false;
     });
+
+    // Resetear a la primera página si los filtros cambian y la página actual queda fuera de rango
+    const totalPages = Math.ceil(filtered.length / this.pageSize);
+    if (this.currentPage > totalPages && totalPages > 0) {
+      this.currentPage = 1;
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Gets the paginated weekly statistics for the selected contributor.
+   * @returns List of paginated contributor weekly statistics.
+   */
+  getPaginatedWeeklyStats(): ContributorWeekStats[] {
+    const filtered = this.getFilteredWeeklyStats();
+    const startIndex = (this.currentPage - 1) * this.pageSize;
+    return filtered.slice(startIndex, startIndex + this.pageSize);
+  }
+
+  /**
+   * Gets the total number of pages for the filtered weekly statistics.
+   * @returns Total number of pages.
+   */
+  getTotalPages(): number {
+    const filtered = this.getFilteredWeeklyStats();
+    return Math.ceil(filtered.length / this.pageSize);
+  }
+
+  /**
+   * Changes the current page in the statistics table.
+   * @param page The page number to go to.
+   */
+  goToPage(page: number) {
+    if (page >= 1 && page <= this.getTotalPages()) {
+      this.currentPage = page;
+    }
   }
 
   /**
