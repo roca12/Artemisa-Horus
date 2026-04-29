@@ -1,4 +1,13 @@
-import { Component, OnInit, signal, Output, EventEmitter, Input, ViewChild, ElementRef } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  signal,
+  Output,
+  EventEmitter,
+  Input,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { GithubService } from '../github.service';
 import { ConfigService, UserMapping } from '../config.service';
 import { environment } from '../../environments/environment';
@@ -54,7 +63,11 @@ export class Admin implements OnInit {
     end.setDate(start.getDate() + 6); // Domingo
     end.setHours(23, 59, 59, 999);
 
-    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
+    const options: Intl.DateTimeFormatOptions = {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    };
     this.weekRange = `${start.toLocaleDateString('es-ES', options)} - ${end.toLocaleDateString('es-ES', options)}`;
   }
 
@@ -239,16 +252,18 @@ export class Admin implements OnInit {
       scale: 2, // Mejor calidad
       useCORS: true, // Para las imágenes de avatar de GitHub
       logging: false,
-    }).then((canvas) => {
-      const link = document.createElement('a');
-      const dateStr = new Date().toISOString().split('T')[0];
-      link.download = `Reporte_Semanal_GPC_${dateStr}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      this.toastr.success('Reporte descargado correctamente');
-    }).catch(err => {
-      console.error('Error al generar imagen:', err);
-      this.toastr.error('Error al generar el reporte');
-    });
+    })
+      .then((canvas) => {
+        const link = document.createElement('a');
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.download = `Reporte_Semanal_GPC_${dateStr}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        this.toastr.success('Reporte descargado correctamente');
+      })
+      .catch((err) => {
+        console.error('Error al generar imagen:', err);
+        this.toastr.error('Error al generar el reporte');
+      });
   }
 }

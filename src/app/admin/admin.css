@@ -431,8 +431,12 @@ body.dark-theme .btn-download:hover {
   border-bottom: 1px solid #333;
 }
 
-.passed .section-title { color: #2ecc71; }
-.failed .section-title { color: #e74c3c; }
+.passed .section-title {
+  color: #2ecc71;
+}
+.failed .section-title {
+  color: #e74c3c;
+}
 
 .report-grid {
   display: grid;

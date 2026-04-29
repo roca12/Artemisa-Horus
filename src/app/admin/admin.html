@@ -220,7 +220,7 @@
           <h3 class="section-title"><i class="fas fa-check-circle"></i> Al Día (Cumplen Meta)</h3>
           <div class="report-grid">
             <div *ngFor="let c of passedContributors" class="report-card">
-              <img [src]="c.avatarUrl" class="report-avatar" alt="">
+              <img [src]="c.avatarUrl" class="report-avatar" alt="" />
               <div class="report-info">
                 <span class="report-name">{{ getDisplayName(c.login) }}</span>
                 <span class="report-stat">{{ c.totalFiles }} ejercicios</span>
@@ -236,7 +236,7 @@
           <h3 class="section-title"><i class="fas fa-times-circle"></i> En Deuda (Pendientes)</h3>
           <div class="report-grid">
             <div *ngFor="let c of failedContributors" class="report-card debt">
-              <img [src]="c.avatarUrl" class="report-avatar" alt="">
+              <img [src]="c.avatarUrl" class="report-avatar" alt="" />
               <div class="report-info">
                 <span class="report-name">{{ getDisplayName(c.login) }}</span>
                 <span class="report-stat debt">Debe: {{ c.totalDebt }}</span>
@@ -249,9 +249,7 @@
         </div>
       </div>
 
-      <div class="report-footer">
-        Generado el {{ today | date:'dd/MM/yyyy HH:mm' }}
-      </div>
+      <div class="report-footer">Generado el {{ today | date: 'dd/MM/yyyy HH:mm' }}</div>
     </div>
   </div>
 </div>
