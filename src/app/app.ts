@@ -486,7 +486,10 @@ export class App implements OnInit, OnDestroy {
    * @param commits Detailed list of commits affecting the folder.
    * @param allGitHubContributors List of all repository contributors.
    */
-  private processFolderContributors(commits: GithubCommit[], allGitHubContributors: GithubCollaborator[] = []) {
+  private processFolderContributors(
+    commits: GithubCommit[],
+    allGitHubContributors: GithubCollaborator[] = [],
+  ) {
     const contributorsData: {
       [login: string]: { [weekKey: string]: { messages: string[]; files: string[] } };
     } = {};
@@ -518,7 +521,11 @@ export class App implements OnInit, OnDestroy {
 
     // Generar todas las semanas desde la primera hasta la actual
     const allWeeks: string[] = [];
-    for (let tempWeek = new Date(firstWeekStart); tempWeek <= currentWeekStart; tempWeek.setDate(tempWeek.getDate() + 7)) {
+    for (
+      let tempWeek = new Date(firstWeekStart);
+      tempWeek <= currentWeekStart;
+      tempWeek.setDate(tempWeek.getDate() + 7)
+    ) {
       allWeeks.push(new Date(tempWeek).toISOString().split('T')[0]);
     }
     allWeeks.reverse(); // De más reciente a más antigua

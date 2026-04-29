@@ -46,7 +46,7 @@ export interface GithubCollaborator {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class GithubService {
   private readonly owner = 'roca12';
@@ -68,30 +68,51 @@ export class GithubService {
   }
 
   getCommits(): Observable<GithubCommit[]> {
-    return this.http.get<GithubCommit[]>(`${this.baseUrl}/${this.owner}/${this.repo}/commits?per_page=100`, this.getHeaders());
+    return this.http.get<GithubCommit[]>(
+      `${this.baseUrl}/${this.owner}/${this.repo}/commits?per_page=100`,
+      this.getHeaders(),
+    );
   }
 
   getFolderContents(path: string): Observable<GithubContent[]> {
-    return this.http.get<GithubContent[]>(`${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`, this.getHeaders());
+    return this.http.get<GithubContent[]>(
+      `${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`,
+      this.getHeaders(),
+    );
   }
 
   getCommitsByPath(path: string): Observable<GithubCommit[]> {
-     return this.http.get<GithubCommit[]>(`${this.baseUrl}/${this.owner}/${this.repo}/commits?path=${path}&per_page=100`, this.getHeaders());
+    return this.http.get<GithubCommit[]>(
+      `${this.baseUrl}/${this.owner}/${this.repo}/commits?path=${path}&per_page=100`,
+      this.getHeaders(),
+    );
   }
 
   getCommitDetail(sha: string): Observable<GithubCommit> {
-    return this.http.get<GithubCommit>(`${this.baseUrl}/${this.owner}/${this.repo}/commits/${sha}`, this.getHeaders());
+    return this.http.get<GithubCommit>(
+      `${this.baseUrl}/${this.owner}/${this.repo}/commits/${sha}`,
+      this.getHeaders(),
+    );
   }
 
   getFileContent(path: string): Observable<GithubContent> {
-    return this.http.get<GithubContent>(`${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`, this.getHeaders());
+    return this.http.get<GithubContent>(
+      `${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`,
+      this.getHeaders(),
+    );
   }
 
   getContributors(): Observable<GithubCollaborator[]> {
-    return this.http.get<GithubCollaborator[]>(`${this.baseUrl}/${this.owner}/${this.repo}/contributors`, this.getHeaders());
+    return this.http.get<GithubCollaborator[]>(
+      `${this.baseUrl}/${this.owner}/${this.repo}/contributors`,
+      this.getHeaders(),
+    );
   }
 
   getCollaborators(): Observable<GithubCollaborator[]> {
-    return this.http.get<GithubCollaborator[]>(`${this.baseUrl}/${this.owner}/${this.repo}/collaborators`, this.getHeaders());
+    return this.http.get<GithubCollaborator[]>(
+      `${this.baseUrl}/${this.owner}/${this.repo}/collaborators`,
+      this.getHeaders(),
+    );
   }
 }
