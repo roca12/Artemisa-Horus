@@ -1,4 +1,12 @@
-import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  signal,
+  ChangeDetectorRef,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { GithubService, GithubCommit } from './github.service';
 import { ConfigService } from './config.service';
 import { forkJoin, Subscription, interval } from 'rxjs';
@@ -34,7 +42,7 @@ interface ContributorInfo {
 @Component({
   selector: 'app-root',
   templateUrl: './app.html',
-  standalone: false
+  standalone: false,
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('GPC - Horus');
@@ -66,7 +74,7 @@ export class App implements OnInit, OnDestroy {
   constructor(
     private githubService: GithubService,
     private configService: ConfigService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
@@ -113,28 +121,35 @@ export class App implements OnInit, OnDestroy {
         this.userMappings = mappingsObj;
         this.cdr.detectChanges();
       },
-      error: (err) => console.error('Error al cargar mapeos desde backend:', err)
+      error: (err) => console.error('Error al cargar mapeos desde backend:', err),
     });
 
     // Cargar contribuidores ocultos desde backend
     this.configService.getHidden().subscribe({
       next: (hidden) => {
         const excludedLogins = [
-          'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
-          'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+          'github-copilot[bot]',
+          'copilot',
+          'github-copilot',
+          'azure-pipelines-bot',
+          'github-actions[bot]',
+          'roca12',
+          'anfeespi',
+          'exiic',
+          'DiegoF1311',
         ];
 
-        this.hiddenContributors = hidden.map(h => h.githubNickname);
+        this.hiddenContributors = hidden.map((h) => h.githubNickname);
 
         // Asegurarse de que los excluidos estén siempre ocultos
-        excludedLogins.forEach(login => {
+        excludedLogins.forEach((login) => {
           if (!this.hiddenContributors.includes(login)) {
             this.hiddenContributors.push(login);
           }
         });
         this.cdr.detectChanges();
       },
-      error: (err) => console.error('Error al cargar colaboradores ocultos desde backend:', err)
+      error: (err) => console.error('Error al cargar colaboradores ocultos desde backend:', err),
     });
   }
 
@@ -166,14 +181,21 @@ export class App implements OnInit, OnDestroy {
     this.error = null;
     const folderPath = 'Resueltos por competidor';
     const excludedLogins = [
-      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
-      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+      'github-copilot[bot]',
+      'copilot',
+      'github-copilot',
+      'azure-pipelines-bot',
+      'github-actions[bot]',
+      'roca12',
+      'anfeespi',
+      'exiic',
+      'DiegoF1311',
     ];
 
     // Asegurarse de tener las configuraciones antes de cargar datos de GitHub
     forkJoin({
       mappings: this.configService.getMappings(),
-      hidden: this.configService.getHidden()
+      hidden: this.configService.getHidden(),
     }).subscribe({
       next: (config) => {
         // Actualizar mapeos
@@ -184,8 +206,8 @@ export class App implements OnInit, OnDestroy {
         this.userMappings = mappingsObj;
 
         // Actualizar ocultos
-        this.hiddenContributors = config.hidden.map(h => h.githubNickname);
-        excludedLogins.forEach(login => {
+        this.hiddenContributors = config.hidden.map((h) => h.githubNickname);
+        excludedLogins.forEach((login) => {
           if (!this.hiddenContributors.includes(login)) {
             this.hiddenContributors.push(login);
           }
@@ -198,7 +220,7 @@ export class App implements OnInit, OnDestroy {
         console.error('Error al cargar configuraciones iniciales:', err);
         // Intentar cargar GitHub data de todos modos o manejar error
         this.fetchGitHubData(folderPath, excludedLogins);
-      }
+      },
     });
   }
 
@@ -206,13 +228,18 @@ export class App implements OnInit, OnDestroy {
     forkJoin({
       generalCommits: this.githubService.getCommits(),
       folderCommits: this.githubService.getCommitsByPath(folderPath),
-      allContributors: this.githubService.getCollaborators().pipe(
-        map(collaborators => collaborators.filter(c =>
-          c.permissions?.push &&
-          !excludedLogins.includes(c.login) &&
-          !(c.login && c.login.toLowerCase().includes('copilot'))
-        ))
-      )
+      allContributors: this.githubService
+        .getCollaborators()
+        .pipe(
+          map((collaborators) =>
+            collaborators.filter(
+              (c) =>
+                c.permissions?.push &&
+                !excludedLogins.includes(c.login) &&
+                !(c.login && c.login.toLowerCase().includes('copilot')),
+            ),
+          ),
+        ),
     }).subscribe({
       next: (data) => {
         console.log('Datos recibidos correctamente:', data);
@@ -220,20 +247,22 @@ export class App implements OnInit, OnDestroy {
 
         // Filtrar commits desde el 20/04/2026 para reducir las peticiones de detalle
         const startDate = new Date(2026, 3, 20); // 20 de Abril de 2026
-        const recentFolderCommits = data.folderCommits.filter(c => new Date(c.commit.author.date) >= startDate);
+        const recentFolderCommits = data.folderCommits.filter(
+          (c) => new Date(c.commit.author.date) >= startDate,
+        );
 
         if (recentFolderCommits.length > 0) {
           const totalDetails = recentFolderCommits.length;
           let completedDetails = 0;
 
-          const detailRequests = recentFolderCommits.map(c =>
+          const detailRequests = recentFolderCommits.map((c) =>
             this.githubService.getCommitDetail(c.sha).pipe(
-              map(detail => {
+              map((detail) => {
                 completedDetails++;
                 this.loadingProgress = 20 + Math.round((completedDetails / totalDetails) * 70);
                 return detail;
-              })
-            )
+              }),
+            ),
           );
 
           forkJoin(detailRequests).subscribe({
@@ -252,7 +281,7 @@ export class App implements OnInit, OnDestroy {
               this.loading = false;
               this.cdr.detectChanges();
             },
-            error: (err) => this.handleError(err)
+            error: (err) => this.handleError(err),
           });
         } else {
           this.processCommits(data.generalCommits);
@@ -274,7 +303,7 @@ export class App implements OnInit, OnDestroy {
       error: (err) => this.handleError(err),
       complete: () => {
         console.log('Suscripción a forkJoin inicial completada.');
-      }
+      },
     });
   }
 
@@ -295,12 +324,19 @@ export class App implements OnInit, OnDestroy {
   private processCommits(commits: GithubCommit[]) {
     const weeks: { [key: string]: WeekStats } = {};
     const excludedLogins = [
-      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
-      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+      'github-copilot[bot]',
+      'copilot',
+      'github-copilot',
+      'azure-pipelines-bot',
+      'github-actions[bot]',
+      'roca12',
+      'anfeespi',
+      'exiic',
+      'DiegoF1311',
     ];
 
     const startDate = new Date(2026, 3, 20);
-    commits.forEach(c => {
+    commits.forEach((c) => {
       const date = new Date(c.commit.author.date);
 
       // Solo incluir commits desde el 20/04/2026 en adelante
@@ -315,27 +351,32 @@ export class App implements OnInit, OnDestroy {
         weeks[weekKey] = {
           weekStart: weekStart,
           commitsCount: 0,
-          authors: {}
+          authors: {},
         };
       }
 
       const author = c.author?.login || c.commit.author.name;
 
       // Omitir excluidos, copilot y otros bots
-      if (excludedLogins.includes(author) || (author && author.toLowerCase().includes('copilot'))) return;
+      if (excludedLogins.includes(author) || (author && author.toLowerCase().includes('copilot')))
+        return;
 
       weeks[weekKey].commitsCount++;
       weeks[weekKey].authors[author] = (weeks[weekKey].authors[author] || 0) + 1;
     });
 
-    this.commitsByWeek = Object.values(weeks).sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
+    this.commitsByWeek = Object.values(weeks).sort(
+      (a, b) => b.weekStart.getTime() - a.weekStart.getTime(),
+    );
   }
 
   private processFolderContributors(commits: GithubCommit[], allGitHubContributors: any[] = []) {
-    const contributorsData: { [login: string]: { [weekKey: string]: { messages: string[], files: string[] } } } = {};
+    const contributorsData: {
+      [login: string]: { [weekKey: string]: { messages: string[]; files: string[] } };
+    } = {};
 
     // Inicializar datos para TODOS los colaboradores de GitHub (si no están ocultos)
-    allGitHubContributors.forEach(c => {
+    allGitHubContributors.forEach((c) => {
       const login = c.login;
       if (login && !this.hiddenContributors.includes(login)) {
         contributorsData[login] = {};
@@ -345,8 +386,15 @@ export class App implements OnInit, OnDestroy {
     // Determinar la semana actual y la primera semana de interés
     const now = new Date();
     const excludedLogins = [
-      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
-      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+      'github-copilot[bot]',
+      'copilot',
+      'github-copilot',
+      'azure-pipelines-bot',
+      'github-actions[bot]',
+      'roca12',
+      'anfeespi',
+      'exiic',
+      'DiegoF1311',
     ];
     const currentWeekStart = this.getStartOfWeek(now);
     const startDate = new Date(2026, 3, 20);
@@ -362,7 +410,7 @@ export class App implements OnInit, OnDestroy {
     allWeeks.reverse(); // De más reciente a más antigua
     const reversedWeeks = [...allWeeks].reverse(); // De más antigua a más reciente para cálculo de deuda
 
-    commits.forEach(commit => {
+    commits.forEach((commit) => {
       const date = new Date(commit.commit.author.date);
 
       // Solo incluir commits desde el 20/04/2026 en adelante
@@ -372,9 +420,9 @@ export class App implements OnInit, OnDestroy {
 
       // Filtrar archivos java, cpp, python y excluir eliminaciones
       const relevantFiles = (commit.files || [])
-        .filter(f => f.status !== 'removed')
-        .map(f => f.filename)
-        .filter(name => {
+        .filter((f) => f.status !== 'removed')
+        .map((f) => f.filename)
+        .filter((name) => {
           const lower = name.toLowerCase();
           return lower.endsWith('.java') || lower.endsWith('.cpp') || lower.endsWith('.py');
         });
@@ -384,9 +432,12 @@ export class App implements OnInit, OnDestroy {
       const author = commit.author?.login || commit.commit.author.name;
 
       // Si el autor está oculto o es copilot (o bot), ignorar
-      if (this.hiddenContributors.includes(author) ||
-          excludedLogins.includes(author) ||
-          (author && author.toLowerCase().includes('copilot'))) return;
+      if (
+        this.hiddenContributors.includes(author) ||
+        excludedLogins.includes(author) ||
+        (author && author.toLowerCase().includes('copilot'))
+      )
+        return;
 
       if (!contributorsData[author]) {
         contributorsData[author] = {};
@@ -399,76 +450,80 @@ export class App implements OnInit, OnDestroy {
       }
 
       contributorsData[author][weekKey].messages.push(commit.commit.message);
-      relevantFiles.forEach(file => {
+      relevantFiles.forEach((file) => {
         if (!contributorsData[author][weekKey].files.includes(file)) {
           contributorsData[author][weekKey].files.push(file);
         }
       });
     });
 
-    this.contributorsInFolder = Object.entries(contributorsData).map(([login, weeksData]) => {
-      let totalDelivered = 0;
-      const goalPerWeek = 3;
-      let accumulatedDebt = 0;
+    this.contributorsInFolder = Object.entries(contributorsData)
+      .map(([login, weeksData]) => {
+        let totalDelivered = 0;
+        const goalPerWeek = 3;
+        let accumulatedDebt = 0;
 
-      // Procesar semanas de antigua a reciente para calcular deuda acumulada correctamente
-      const weeklyStatsChronological: ContributorWeekStats[] = reversedWeeks.map(weekKey => {
-        const data = weeksData[weekKey] || { messages: [], files: [] };
-        const count = data.files.length; // Ejercicios únicos de esta semana
-        totalDelivered += count;
+        // Procesar semanas de antigua a reciente para calcular deuda acumulada correctamente
+        const weeklyStatsChronological: ContributorWeekStats[] = reversedWeeks.map((weekKey) => {
+          const data = weeksData[weekKey] || { messages: [], files: [] };
+          const count = data.files.length; // Ejercicios únicos de esta semana
+          totalDelivered += count;
 
-        // Lógica de deuda:
-        // 1. Añadimos la meta de la semana actual a la deuda acumulada
-        accumulatedDebt += goalPerWeek;
+          // Lógica de deuda:
+          // 1. Añadimos la meta de la semana actual a la deuda acumulada
+          accumulatedDebt += goalPerWeek;
 
-        // 2. Restamos los ejercicios entregados esta semana de la deuda acumulada
-        // (Si entrega más de la deuda, la deuda queda en 0, pero no negativa para la próxima semana)
-        accumulatedDebt = Math.max(0, accumulatedDebt - count);
+          // 2. Restamos los ejercicios entregados esta semana de la deuda acumulada
+          // (Si entrega más de la deuda, la deuda queda en 0, pero no negativa para la próxima semana)
+          accumulatedDebt = Math.max(0, accumulatedDebt - count);
 
-        // Se cumple la meta si al finalizar la semana la deuda es 0
-        const isGoalMet = accumulatedDebt === 0;
+          // Se cumple la meta si al finalizar la semana la deuda es 0
+          const isGoalMet = accumulatedDebt === 0;
+
+          return {
+            weekStart: new Date(weekKey),
+            count: count,
+            diff: 0,
+            messages: data.messages,
+            files: data.files,
+            isGoalMet: isGoalMet,
+            debt: accumulatedDebt,
+          };
+        });
+
+        const weeklyStats = [...weeklyStatsChronological].reverse();
+
+        // Calcular diferencias de aportes entre semanas consecutivas (visual)
+        for (let i = 0; i < weeklyStats.length - 1; i++) {
+          weeklyStats[i].diff = weeklyStats[i].count - weeklyStats[i + 1].count;
+        }
+        if (weeklyStats.length > 0) {
+          weeklyStats[weeklyStats.length - 1].diff = weeklyStats[weeklyStats.length - 1].count;
+        }
+
+        // Buscar avatar en los commits o en la lista de contribuidores
+        const contributorCommit = commits.find(
+          (c) => (c.author?.login || c.commit.author.name) === login,
+        );
+        let avatarUrl = contributorCommit?.author?.avatar_url;
+
+        if (!avatarUrl) {
+          const gitHubUser = allGitHubContributors.find((u) => u.login === login);
+          avatarUrl = gitHubUser?.avatar_url;
+        }
+
+        const finalDebt = accumulatedDebt;
 
         return {
-          weekStart: new Date(weekKey),
-          count: count,
-          diff: 0,
-          messages: data.messages,
-          files: data.files,
-          isGoalMet: isGoalMet,
-          debt: accumulatedDebt
+          login,
+          avatarUrl,
+          totalFiles: totalDelivered,
+          weeklyStats,
+          totalDebt: finalDebt,
+          isCurrentGoalMet: finalDebt === 0,
         };
-      });
-
-      const weeklyStats = [...weeklyStatsChronological].reverse();
-
-      // Calcular diferencias de aportes entre semanas consecutivas (visual)
-      for (let i = 0; i < weeklyStats.length - 1; i++) {
-        weeklyStats[i].diff = weeklyStats[i].count - weeklyStats[i + 1].count;
-      }
-      if (weeklyStats.length > 0) {
-        weeklyStats[weeklyStats.length - 1].diff = weeklyStats[weeklyStats.length - 1].count;
-      }
-
-      // Buscar avatar en los commits o en la lista de contribuidores
-      const contributorCommit = commits.find(c => (c.author?.login || c.commit.author.name) === login);
-      let avatarUrl = contributorCommit?.author?.avatar_url;
-
-      if (!avatarUrl) {
-        const gitHubUser = allGitHubContributors.find(u => u.login === login);
-        avatarUrl = gitHubUser?.avatar_url;
-      }
-
-      const finalDebt = accumulatedDebt;
-
-      return {
-        login,
-        avatarUrl,
-        totalFiles: totalDelivered,
-        weeklyStats,
-        totalDebt: finalDebt,
-        isCurrentGoalMet: finalDebt === 0
-      };
-    }).sort((a, b) => b.totalFiles - a.totalFiles);
+      })
+      .sort((a, b) => b.totalFiles - a.totalFiles);
   }
 
   selectContributor(login: string) {
@@ -483,40 +538,44 @@ export class App implements OnInit, OnDestroy {
 
   getSelectedWeekStats(): WeekStats | undefined {
     if (!this.selectedWeek) return undefined;
-    return this.commitsByWeek.find(w => w.weekStart.toISOString().split('T')[0] === this.selectedWeek);
+    return this.commitsByWeek.find(
+      (w) => w.weekStart.toISOString().split('T')[0] === this.selectedWeek,
+    );
   }
 
   getSelectedContributorStats(): ContributorInfo | undefined {
-    return this.contributorsInFolder.find(c => c.login === this.selectedContributor);
+    return this.contributorsInFolder.find((c) => c.login === this.selectedContributor);
   }
 
   getFilteredWeeklyStats(): ContributorWeekStats[] {
     const contributor = this.getSelectedContributorStats();
     if (!contributor) return [];
 
-    return contributor.weeklyStats.filter(week => {
+    return contributor.weeklyStats.filter((week) => {
       // Filtro por estado
-      const matchesStatus = this.statusFilter === 'all' ||
-                           (this.statusFilter === 'met' && week.isGoalMet) ||
-                           (this.statusFilter === 'failed' && !week.isGoalMet);
+      const matchesStatus =
+        this.statusFilter === 'all' ||
+        (this.statusFilter === 'met' && week.isGoalMet) ||
+        (this.statusFilter === 'failed' && !week.isGoalMet);
 
       // Filtro por búsqueda (en mensajes de commits o nombres de archivos)
       const searchLower = this.searchTerm.toLowerCase();
-      const matchesSearch = !this.searchTerm ||
-                           week.messages.some(m => m.toLowerCase().includes(searchLower)) ||
-                           week.files.some(f => f.toLowerCase().includes(searchLower)) ||
-                           week.weekStart.toLocaleDateString().includes(this.searchTerm);
+      const matchesSearch =
+        !this.searchTerm ||
+        week.messages.some((m) => m.toLowerCase().includes(searchLower)) ||
+        week.files.some((f) => f.toLowerCase().includes(searchLower)) ||
+        week.weekStart.toLocaleDateString().includes(this.searchTerm);
 
       return matchesStatus && matchesSearch;
     });
   }
 
   getPassedContributors(): ContributorInfo[] {
-    return this.contributorsInFolder.filter(c => c.isCurrentGoalMet);
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet);
   }
 
   getFailedContributors(): ContributorInfo[] {
-    return this.contributorsInFolder.filter(c => !c.isCurrentGoalMet);
+    return this.contributorsInFolder.filter((c) => !c.isCurrentGoalMet);
   }
 
   private getStartOfWeek(date: Date): Date {
@@ -566,7 +625,7 @@ export class App implements OnInit, OnDestroy {
         this.fileCode = 'Error al cargar el archivo: ' + (err.message || 'Desconocido');
         this.loadingCode = false;
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -580,7 +639,7 @@ export class App implements OnInit, OnDestroy {
         lineNumbers: true,
         readOnly: true,
         lineWrapping: true,
-        viewportMargin: Infinity
+        viewportMargin: Infinity,
       });
     } else if (this.codeMirrorEditor) {
       this.codeMirrorEditor.setValue(this.fileCode);
@@ -592,18 +651,26 @@ export class App implements OnInit, OnDestroy {
   private getMode(fileName: string): string {
     const ext = fileName.split('.').pop()?.toLowerCase();
     switch (ext) {
-      case 'java': return 'text/x-java';
+      case 'java':
+        return 'text/x-java';
       case 'cpp':
       case 'c':
       case 'h':
-      case 'hpp': return 'text/x-c++src';
-      case 'py': return 'text/x-python';
+      case 'hpp':
+        return 'text/x-c++src';
+      case 'py':
+        return 'text/x-python';
       case 'js':
-      case 'ts': return 'text/javascript';
-      case 'html': return 'text/html';
-      case 'xml': return 'application/xml';
-      case 'md': return 'text/x-markdown';
-      default: return 'text/plain';
+      case 'ts':
+        return 'text/javascript';
+      case 'html':
+        return 'text/html';
+      case 'xml':
+        return 'application/xml';
+      case 'md':
+        return 'text/x-markdown';
+      default:
+        return 'text/plain';
     }
   }
 
