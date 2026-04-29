@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { GithubService, GithubCommit } from './github.service';
+import { ConfigService } from './config.service';
 import { forkJoin, Subscription, interval } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -62,7 +63,11 @@ export class App implements OnInit, OnDestroy {
 
   private refreshSubscription?: Subscription;
 
-  constructor(private githubService: GithubService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private githubService: GithubService,
+    private configService: ConfigService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.initTheme();
@@ -98,35 +103,39 @@ export class App implements OnInit, OnDestroy {
   }
 
   private loadSettings() {
-    // Cargar mapeos
-    const savedMappings = localStorage.getItem('github_user_mappings');
-    if (savedMappings) {
-      const mappingsArray = JSON.parse(savedMappings);
-      const mappingsObj: { [nickname: string]: string } = {};
-      mappingsArray.forEach((m: any) => {
-        mappingsObj[m.githubNickname.toLowerCase()] = m.realName;
-      });
-      this.userMappings = mappingsObj;
-    }
+    // Cargar mapeos desde backend
+    this.configService.getMappings().subscribe({
+      next: (mappings) => {
+        const mappingsObj: { [nickname: string]: string } = {};
+        mappings.forEach((m) => {
+          mappingsObj[m.githubNickname.toLowerCase()] = m.realName;
+        });
+        this.userMappings = mappingsObj;
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Error al cargar mapeos desde backend:', err)
+    });
 
-    // Cargar contribuidores ocultos
-    const savedHidden = localStorage.getItem('github_hidden_contributors');
-    const excludedLogins = [
-      'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
-      'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
-    ];
+    // Cargar contribuidores ocultos desde backend
+    this.configService.getHidden().subscribe({
+      next: (hidden) => {
+        const excludedLogins = [
+          'github-copilot[bot]', 'copilot', 'github-copilot', 'azure-pipelines-bot', 'github-actions[bot]',
+          'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
+        ];
 
-    if (savedHidden) {
-      this.hiddenContributors = JSON.parse(savedHidden);
-      // Asegurarse de que los excluidos estén siempre ocultos
-      excludedLogins.forEach(login => {
-        if (!this.hiddenContributors.includes(login)) {
-          this.hiddenContributors.push(login);
-        }
-      });
-    } else {
-      this.hiddenContributors = [...excludedLogins];
-    }
+        this.hiddenContributors = hidden.map(h => h.githubNickname);
+
+        // Asegurarse de que los excluidos estén siempre ocultos
+        excludedLogins.forEach(login => {
+          if (!this.hiddenContributors.includes(login)) {
+            this.hiddenContributors.push(login);
+          }
+        });
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Error al cargar colaboradores ocultos desde backend:', err)
+    });
   }
 
   getDisplayName(login: string): string {
@@ -161,6 +170,39 @@ export class App implements OnInit, OnDestroy {
       'roca12', 'anfeespi', 'exiic', 'DiegoF1311'
     ];
 
+    // Asegurarse de tener las configuraciones antes de cargar datos de GitHub
+    forkJoin({
+      mappings: this.configService.getMappings(),
+      hidden: this.configService.getHidden()
+    }).subscribe({
+      next: (config) => {
+        // Actualizar mapeos
+        const mappingsObj: { [nickname: string]: string } = {};
+        config.mappings.forEach((m) => {
+          mappingsObj[m.githubNickname.toLowerCase()] = m.realName;
+        });
+        this.userMappings = mappingsObj;
+
+        // Actualizar ocultos
+        this.hiddenContributors = config.hidden.map(h => h.githubNickname);
+        excludedLogins.forEach(login => {
+          if (!this.hiddenContributors.includes(login)) {
+            this.hiddenContributors.push(login);
+          }
+        });
+
+        // Ahora cargar datos de GitHub
+        this.fetchGitHubData(folderPath, excludedLogins);
+      },
+      error: (err) => {
+        console.error('Error al cargar configuraciones iniciales:', err);
+        // Intentar cargar GitHub data de todos modos o manejar error
+        this.fetchGitHubData(folderPath, excludedLogins);
+      }
+    });
+  }
+
+  private fetchGitHubData(folderPath: string, excludedLogins: string[]) {
     forkJoin({
       generalCommits: this.githubService.getCommits(),
       folderCommits: this.githubService.getCommitsByPath(folderPath),

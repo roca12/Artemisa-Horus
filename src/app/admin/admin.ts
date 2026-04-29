@@ -190,6 +190,16 @@ export class Admin implements OnInit {
     return this.contributors().filter((c) => this.isHidden(c.login));
   }
 
+  clearLocalStorage() {
+    if (confirm('¿Estás seguro de que deseas limpiar la configuración local (tema y ajustes)?')) {
+      localStorage.clear();
+      this.toastr.success('Configuración local eliminada. La página se recargará.');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
+  }
+
   onClose() {
     this.close.emit();
   }
