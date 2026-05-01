@@ -444,7 +444,9 @@ export class App implements OnInit, OnDestroy {
    * @param err The error object.
    */
   private handleError(err: { status?: number; message?: string }) {
-    console.error('Error detectado:', err);
+    if (err.status !== 404) {
+      console.error('Error detectado:', err);
+    }
     if (err.status === 401) {
       this.error = 'Error de autenticación: El Token de GitHub es inválido o ha expirado.';
     } else if (err.status === 403) {
@@ -632,7 +634,22 @@ export class App implements OnInit, OnDestroy {
     if (allUniqueFiles.length > 0) {
       const fileRequests = allUniqueFiles.map(path =>
         this.githubService.getFileContent(path).pipe(
-          map(content => ({ path, content: content.content ? atob(content.content.replace(/\s/g, '')) : '' }))
+          map(content => {
+            if (!content || !content.content) return { path, content: '' };
+            try {
+              const base64 = content.content.replace(/\s/g, '');
+              const binaryString = atob(base64);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              const decoded = new TextDecoder('utf-8').decode(bytes);
+              return { path, content: decoded };
+            } catch (e) {
+              console.error('Error decodificando contenido para validación:', e);
+              return { path, content: '' };
+            }
+          })
         )
       );
 
@@ -641,6 +658,7 @@ export class App implements OnInit, OnDestroy {
         next: (filesWithContent) => {
           const fileDocStatus: { [path: string]: boolean } = {};
           filesWithContent.forEach(f => {
+            // Si el contenido está vacío, validateDocumentation devolverá false (no documentado)
             fileDocStatus[f.path] = this.validateDocumentation(f.content, f.path);
           });
 
@@ -661,7 +679,9 @@ export class App implements OnInit, OnDestroy {
           this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
         },
         error: (err) => {
-          console.error('Error cargando contenidos de archivos:', err);
+          if (err.status !== 404) {
+            console.error('Error cargando contenidos de archivos:', err);
+          }
           // Si falla, procesamos sin info de documentación
           this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
         }
@@ -772,34 +792,27 @@ export class App implements OnInit, OnDestroy {
   private validateDocumentation(content: string, fileName: string): boolean {
     if (!content) return false;
 
-    const lowerName = fileName.toLowerCase();
-    let regex: RegExp;
-
     // Estándar:
     /*
-     * Autor:*
+     * Autor: *
      * Problema: *
      * Juez online: *
-     * Veredicto: Accepted
+     * Veredicto: Accepted | Correct | Yes | Ok
      * URL: *
-     * */
-    // Veredicto puede ser Accepted, Correct o Yes (case insensitive)
+     */
 
-    const pattern =
-      'Autor:.*\\s*' +
-      '\\*\\s*Problema:.*\\s*' +
-      '\\*\\s*Juez online:.*\\s*' +
-      '\\*\\s*Veredicto:\\s*(Accepted|Correct|Yes|Ok).*\\s*' +
-      '\\*\\s*URL:.*';
+    // Expresiones regulares individuales para cada campo obligatorio
+    // Se permite cualquier prefijo (*, #, o nada) y flexibilidad en espacios
+    const patterns = [
+      /Autor:/i,
+      /Problema:/i,
+      /Juez\s+online:/i,
+      /Veredicto:\s*(Accepted|Correct|Yes|Ok|Passed)/i,
+      /URL:/i
+    ];
 
-    // Aceptar estilo de comentario /* ... */ o # (para Python)
-    // El patrón busca la secuencia de Autor, Problema, etc. precedidos por * o #
-    const combinedPattern = pattern.replace(/\\\*/g, '[*#]');
-
-    // Permitimos que empiece con /* o simplemente con los campos si es Python
-    regex = new RegExp('(\\/\\*|#).*' + combinedPattern, 'i');
-
-    return regex.test(content);
+    // Verificar que todos los campos existan en el contenido
+    return patterns.every(regex => regex.test(content));
   }
 
   /**
@@ -979,6 +992,12 @@ export class App implements OnInit, OnDestroy {
     this.githubService.getFileContent(path).subscribe({
       next: (data: GithubContent) => {
         try {
+          if (!data || !data.content) {
+            this.fileCode = 'El archivo no se encontró o no tiene contenido (puede que haya sido movido o renombrado).';
+            this.loadingCode = false;
+            this.cdr.detectChanges();
+            return;
+          }
           // GitHub devuelve el contenido en base64
           // Decodificar Base64 manejando correctamente UTF-8
           const base64 = (data.content || '').replace(/\s/g, '');
@@ -1000,11 +1019,17 @@ export class App implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         }
       },
-      error: (err: { message?: string }) => {
-        this.fileCode = `Error al cargar el archivo: ${err.message || 'Desconocido'}`;
-        this.loadingCode = false;
-        this.cdr.detectChanges();
-      },
+        error: (err: { status?: number, message?: string }) => {
+          if (err.status !== 404) {
+            console.error('Error al cargar el archivo individual:', err);
+          }
+          this.fileCode = `Error al cargar el archivo: ${err.message || 'Desconocido'}`;
+          if (err.status === 404) {
+            this.fileCode = 'El archivo no se encontró (404).';
+          }
+          this.loadingCode = false;
+          this.cdr.detectChanges();
+        },
     });
   }
 
