@@ -98,7 +98,10 @@ export class GithubService {
 
   getFileContent(path: string): Observable<GithubContent> {
     return this.http
-      .get<GithubContent>(`${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`, this.getHeaders())
+      .get<GithubContent>(
+        `${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`,
+        this.getHeaders(),
+      )
       .pipe(
         catchError((error) => {
           // Retornar un objeto GithubContent con indicación de error si es 404
