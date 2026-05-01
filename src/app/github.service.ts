@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, forkJoin } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { Observable, forkJoin, of } from 'rxjs';
+import { map, switchMap, catchError } from 'rxjs/operators';
 import { environment } from '../environments/environment';
 
 export interface GithubCommit {
@@ -96,10 +96,26 @@ export class GithubService {
   }
 
   getFileContent(path: string): Observable<GithubContent> {
-    return this.http.get<GithubContent>(
-      `${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`,
-      this.getHeaders(),
-    );
+    return this.http
+      .get<GithubContent>(
+        `${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`,
+        this.getHeaders(),
+      )
+      .pipe(
+        catchError((error) => {
+          if (error.status !== 404) {
+            console.warn(`Error al cargar: ${path}`, error);
+          }
+          // Retornar un objeto GithubContent vacío o con indicación de error
+          return of({
+            name: path.split('/').pop() || '',
+            path: path,
+            type: 'file',
+            url: '',
+            content: '', // Contenido vacío para evitar fallos en decodificación
+          } as GithubContent);
+        }),
+      );
   }
 
   getContributors(): Observable<GithubCollaborator[]> {
