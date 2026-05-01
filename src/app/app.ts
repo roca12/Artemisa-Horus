@@ -625,16 +625,18 @@ export class App implements OnInit, OnDestroy {
     });
 
     // Analizar documentación de archivos únicos
-    const allUniqueFiles = Array.from(new Set<string>(
-      Object.values(contributorsData).flatMap(weeks =>
-        Object.values(weeks).flatMap(data => data.files)
-      )
-    ));
+    const allUniqueFiles = Array.from(
+      new Set<string>(
+        Object.values(contributorsData).flatMap((weeks) =>
+          Object.values(weeks).flatMap((data) => data.files),
+        ),
+      ),
+    );
 
     if (allUniqueFiles.length > 0) {
-      const fileRequests = allUniqueFiles.map(path =>
+      const fileRequests = allUniqueFiles.map((path) =>
         this.githubService.getFileContent(path).pipe(
-          map(content => {
+          map((content) => {
             if (!content || !content.content) return { path, content: '' };
             try {
               const base64 = content.content.replace(/\s/g, '');
@@ -649,23 +651,23 @@ export class App implements OnInit, OnDestroy {
               console.error('Error decodificando contenido para validación:', e);
               return { path, content: '' };
             }
-          })
-        )
+          }),
+        ),
       );
 
       // Usar forkJoin para procesar todos los archivos
       forkJoin(fileRequests).subscribe({
         next: (filesWithContent) => {
           const fileDocStatus: { [path: string]: boolean } = {};
-          filesWithContent.forEach(f => {
+          filesWithContent.forEach((f) => {
             // Si el contenido está vacío, validateDocumentation devolverá false (no documentado)
             fileDocStatus[f.path] = this.validateDocumentation(f.content, f.path);
           });
 
           // Actualizar contributorsData con el estado de documentación
-          Object.values(contributorsData).forEach(weeks => {
-            Object.values(weeks).forEach(data => {
-              data.files.forEach(f => {
+          Object.values(contributorsData).forEach((weeks) => {
+            Object.values(weeks).forEach((data) => {
+              data.files.forEach((f) => {
                 if (fileDocStatus[f]) {
                   data.documented.push(f);
                 } else {
@@ -676,18 +678,33 @@ export class App implements OnInit, OnDestroy {
           });
 
           // Finalmente procesar los colaboradores (esta parte es la que ya tenemos pero movida aquí)
-          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+          this.finalizeProcessFolderContributors(
+            contributorsData,
+            commits,
+            allGitHubContributors,
+            reversedWeeks,
+          );
         },
         error: (err) => {
           if (err.status !== 404) {
             console.error('Error cargando contenidos de archivos:', err);
           }
           // Si falla, procesamos sin info de documentación
-          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
-        }
+          this.finalizeProcessFolderContributors(
+            contributorsData,
+            commits,
+            allGitHubContributors,
+            reversedWeeks,
+          );
+        },
       });
     } else {
-      this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+      this.finalizeProcessFolderContributors(
+        contributorsData,
+        commits,
+        allGitHubContributors,
+        reversedWeeks,
+      );
     }
   }
 
@@ -695,7 +712,7 @@ export class App implements OnInit, OnDestroy {
     contributorsData: any,
     commits: GithubCommit[],
     allGitHubContributors: GithubCollaborator[],
-    reversedWeeks: string[]
+    reversedWeeks: string[],
   ) {
     this.contributorsInFolder = Object.entries(contributorsData)
       .map(([login, weeksData]: [string, any]) => {
@@ -808,11 +825,11 @@ export class App implements OnInit, OnDestroy {
       /Problema:/i,
       /Juez\s+online:/i,
       /Veredicto:\s*(Accepted|Correct|Yes|Ok|Passed)/i,
-      /URL:/i
+      /URL:/i,
     ];
 
     // Verificar que todos los campos existan en el contenido
-    return patterns.every(regex => regex.test(content));
+    return patterns.every((regex) => regex.test(content));
   }
 
   /**
@@ -993,7 +1010,8 @@ export class App implements OnInit, OnDestroy {
       next: (data: GithubContent) => {
         try {
           if (!data || !data.content) {
-            this.fileCode = 'El archivo no se encontró o no tiene contenido (puede que haya sido movido o renombrado).';
+            this.fileCode =
+              'El archivo no se encontró o no tiene contenido (puede que haya sido movido o renombrado).';
             this.loadingCode = false;
             this.cdr.detectChanges();
             return;
@@ -1019,17 +1037,17 @@ export class App implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         }
       },
-        error: (err: { status?: number, message?: string }) => {
-          if (err.status !== 404) {
-            console.error('Error al cargar el archivo individual:', err);
-          }
-          this.fileCode = `Error al cargar el archivo: ${err.message || 'Desconocido'}`;
-          if (err.status === 404) {
-            this.fileCode = 'El archivo no se encontró (404).';
-          }
-          this.loadingCode = false;
-          this.cdr.detectChanges();
-        },
+      error: (err: { status?: number; message?: string }) => {
+        if (err.status !== 404) {
+          console.error('Error al cargar el archivo individual:', err);
+        }
+        this.fileCode = `Error al cargar el archivo: ${err.message || 'Desconocido'}`;
+        if (err.status === 404) {
+          this.fileCode = 'El archivo no se encontró (404).';
+        }
+        this.loadingCode = false;
+        this.cdr.detectChanges();
+      },
     });
   }
 
