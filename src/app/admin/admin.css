@@ -31,6 +31,12 @@
 }
 
 @media (max-width: 600px) {
+  .admin-modal-content {
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
   .admin-header {
     padding: 1rem;
   }
@@ -39,8 +45,14 @@
     padding: 1rem;
   }
 
+  .admin-header h3 {
+    font-size: 1.1rem;
+    gap: 8px;
+  }
+
   .form-row {
     flex-direction: column;
+    gap: 12px;
   }
 
   .form-row .admin-input {
@@ -50,6 +62,13 @@
   .btn-add {
     justify-content: center;
     padding: 12px;
+    width: 100%;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.8rem 0.5rem;
+    font-size: 0.8rem;
   }
 
   .admin-table th:nth-child(1),
@@ -62,13 +81,29 @@
   .actions {
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     justify-content: center;
   }
 
   .btn-icon {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .admin-footer {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .admin-footer .btn-download {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .admin-footer .btn-secondary {
+    width: 100%;
+    text-align: center;
   }
 }
 
@@ -516,13 +551,4 @@ body.dark-theme .btn-download:hover {
   text-align: center;
   color: #666;
   font-size: 12px;
-}
-
-@media (max-width: 600px) {
-  .form-row {
-    flex-direction: column;
-  }
-  .admin-input {
-    max-width: none;
-  }
 }

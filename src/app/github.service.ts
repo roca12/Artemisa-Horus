@@ -31,6 +31,7 @@ export interface GithubContent {
   url: string;
   content?: string;
   encoding?: string;
+  notFound?: boolean;
 }
 
 export interface GithubCollaborator {
@@ -103,16 +104,14 @@ export class GithubService {
       )
       .pipe(
         catchError((error) => {
-          if (error.status !== 404) {
-            console.warn(`Error al cargar: ${path}`, error);
-          }
-          // Retornar un objeto GithubContent vacío o con indicación de error
+          // Retornar un objeto GithubContent con indicación de error si es 404
           return of({
             name: path.split('/').pop() || '',
             path: path,
             type: 'file',
             url: '',
-            content: '', // Contenido vacío para evitar fallos en decodificación
+            content: '',
+            notFound: error.status === 404,
           } as GithubContent);
         }),
       );
