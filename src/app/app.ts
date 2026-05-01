@@ -648,19 +648,21 @@ export class App implements OnInit, OnDestroy {
     });
 
     // Analizar documentación de archivos únicos
-    const allUniqueFiles = Array.from(new Set<string>(
-      Object.values(contributorsData).flatMap(weeks =>
-        Object.values(weeks).flatMap(data => data.files)
-      )
-    ));
+    const allUniqueFiles = Array.from(
+      new Set<string>(
+        Object.values(contributorsData).flatMap((weeks) =>
+          Object.values(weeks).flatMap((data) => data.files),
+        ),
+      ),
+    );
 
     if (allUniqueFiles.length > 0) {
-      const fileRequests = allUniqueFiles.map(path =>
+      const fileRequests = allUniqueFiles.map((path) =>
         this.githubService.getFileContent(path).pipe(
-          map(content => {
-          if (!content || content.notFound) return { path, content: '', notFound: true };
-          if (!content.content) return { path, content: '', notFound: false };
-          try {
+          map((content) => {
+            if (!content || content.notFound) return { path, content: '', notFound: true };
+            if (!content.content) return { path, content: '', notFound: false };
+            try {
               const base64 = content.content.replace(/\s/g, '');
               const binaryString = atob(base64);
               const bytes = new Uint8Array(binaryString.length);
@@ -673,8 +675,8 @@ export class App implements OnInit, OnDestroy {
               console.error('Error decodificando contenido para validación:', e);
               return { path, content: '', notFound: false };
             }
-          })
-        )
+          }),
+        ),
       );
 
       // Usar forkJoin para procesar todos los archivos
@@ -682,7 +684,7 @@ export class App implements OnInit, OnDestroy {
         next: (filesWithContent) => {
           const fileDocStatus: { [path: string]: boolean } = {};
           const filesNotFound: string[] = [];
-          filesWithContent.forEach(f => {
+          filesWithContent.forEach((f) => {
             if (f.notFound) {
               filesNotFound.push(f.path);
             } else {
@@ -708,18 +710,33 @@ export class App implements OnInit, OnDestroy {
           });
 
           // Finalmente procesar los colaboradores (esta parte es la que ya tenemos pero movida aquí)
-          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+          this.finalizeProcessFolderContributors(
+            contributorsData,
+            commits,
+            allGitHubContributors,
+            reversedWeeks,
+          );
         },
         error: (err) => {
           if (err.status !== 404) {
             console.error('Error cargando contenidos de archivos:', err);
           }
           // Si falla, procesamos sin info de documentación
-          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
-        }
+          this.finalizeProcessFolderContributors(
+            contributorsData,
+            commits,
+            allGitHubContributors,
+            reversedWeeks,
+          );
+        },
       });
     } else {
-      this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+      this.finalizeProcessFolderContributors(
+        contributorsData,
+        commits,
+        allGitHubContributors,
+        reversedWeeks,
+      );
     }
   }
 
@@ -727,7 +744,7 @@ export class App implements OnInit, OnDestroy {
     contributorsData: any,
     commits: GithubCommit[],
     allGitHubContributors: GithubCollaborator[],
-    reversedWeeks: string[]
+    reversedWeeks: string[],
   ) {
     this.contributorsInFolder = Object.entries(contributorsData)
       .map(([login, weeksData]: [string, any]) => {
@@ -844,7 +861,7 @@ export class App implements OnInit, OnDestroy {
       /Problema:/i,
       /Juez\s+online:/i,
       /Veredicto:\s*(Accepted|Correct|Yes|Ok|Passed|Aceptado)/i,
-      /URL:/i
+      /URL:/i,
     ];
 
     // Normalización de términos (opcional para campos que varían entre idiomas)
@@ -854,7 +871,7 @@ export class App implements OnInit, OnDestroy {
       .replace(/Enlace:/i, 'URL:');
 
     // Verificar que todos los campos existan en el contenido
-    return patterns.every(regex => regex.test(normalizedContent));
+    return patterns.every((regex) => regex.test(normalizedContent));
   }
 
   /**
@@ -1043,7 +1060,8 @@ export class App implements OnInit, OnDestroy {
       next: (data: GithubContent) => {
         try {
           if (!data || !data.content) {
-            this.fileCode = 'El archivo no se encontró o no tiene contenido (puede que haya sido movido o renombrado).';
+            this.fileCode =
+              'El archivo no se encontró o no tiene contenido (puede que haya sido movido o renombrado).';
             this.loadingCode = false;
             this.cdr.detectChanges();
             return;
@@ -1069,17 +1087,17 @@ export class App implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         }
       },
-        error: (err: { status?: number, message?: string }) => {
-          if (err.status !== 404) {
-            console.error('Error al cargar el archivo individual:', err);
-          }
-          this.fileCode = `Error al cargar el archivo: ${err.message || 'Desconocido'}`;
-          if (err.status === 404) {
-            this.fileCode = 'El archivo no se encontró (404).';
-          }
-          this.loadingCode = false;
-          this.cdr.detectChanges();
-        },
+      error: (err: { status?: number; message?: string }) => {
+        if (err.status !== 404) {
+          console.error('Error al cargar el archivo individual:', err);
+        }
+        this.fileCode = `Error al cargar el archivo: ${err.message || 'Desconocido'}`;
+        if (err.status === 404) {
+          this.fileCode = 'El archivo no se encontró (404).';
+        }
+        this.loadingCode = false;
+        this.cdr.detectChanges();
+      },
     });
   }
 

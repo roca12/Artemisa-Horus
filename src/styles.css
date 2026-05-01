@@ -136,7 +136,8 @@ header {
 }
 
 @keyframes pulse-logo {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
   }
@@ -1165,7 +1166,8 @@ tr:hover td {
     flex: 1;
   }
 
-  th, td {
+  th,
+  td {
     padding: 12px 10px;
     font-size: 0.8rem;
   }
@@ -1613,4 +1615,3 @@ body.dark-theme .github-profile-btn:hover {
 .help-section li:last-child {
   margin-bottom: 0;
 }
-
