@@ -635,7 +635,8 @@ export class App implements OnInit, OnDestroy {
       const fileRequests = allUniqueFiles.map(path =>
         this.githubService.getFileContent(path).pipe(
           map(content => {
-            if (!content || !content.content) return { path, content: '' };
+            if (content.notFound) return { path, content: '', notFound: true };
+            if (!content || !content.content) return { path, content: '', notFound: false };
             try {
               const base64 = content.content.replace(/\s/g, '');
               const binaryString = atob(base64);
@@ -644,10 +645,10 @@ export class App implements OnInit, OnDestroy {
                 bytes[i] = binaryString.charCodeAt(i);
               }
               const decoded = new TextDecoder('utf-8').decode(bytes);
-              return { path, content: decoded };
+              return { path, content: decoded, notFound: false };
             } catch (e) {
               console.error('Error decodificando contenido para validación:', e);
-              return { path, content: '' };
+              return { path, content: '', notFound: false };
             }
           })
         )
@@ -656,20 +657,32 @@ export class App implements OnInit, OnDestroy {
       // Usar forkJoin para procesar todos los archivos
       forkJoin(fileRequests).subscribe({
         next: (filesWithContent) => {
-          const fileDocStatus: { [path: string]: boolean } = {};
+          const fileDocStatus: { [path: string]: { documented: boolean; exists: boolean } } = {};
           filesWithContent.forEach(f => {
-            // Si el contenido está vacío, validateDocumentation devolverá false (no documentado)
-            fileDocStatus[f.path] = this.validateDocumentation(f.content, f.path);
+            if (f.notFound) {
+              fileDocStatus[f.path] = { documented: false, exists: false };
+            } else {
+              fileDocStatus[f.path] = {
+                documented: this.validateDocumentation(f.content, f.path),
+                exists: true
+              };
+            }
           });
 
           // Actualizar contributorsData con el estado de documentación
           Object.values(contributorsData).forEach(weeks => {
             Object.values(weeks).forEach(data => {
-              data.files.forEach(f => {
-                if (fileDocStatus[f]) {
-                  data.documented.push(f);
-                } else {
-                  data.undocumented.push(f);
+              const originalFiles = [...data.files];
+              data.files = []; // Limpiar para re-llenar solo con los que existen
+              originalFiles.forEach(f => {
+                const status = fileDocStatus[f];
+                if (status && status.exists) {
+                  data.files.push(f);
+                  if (status.documented) {
+                    data.documented.push(f);
+                  } else {
+                    data.undocumented.push(f);
+                  }
                 }
               });
             });

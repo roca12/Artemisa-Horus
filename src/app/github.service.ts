@@ -95,7 +95,7 @@ export class GithubService {
     );
   }
 
-  getFileContent(path: string): Observable<GithubContent> {
+  getFileContent(path: string): Observable<GithubContent & { notFound?: boolean }> {
     return this.http
       .get<GithubContent>(
         `${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`,
@@ -103,16 +103,23 @@ export class GithubService {
       )
       .pipe(
         catchError((error) => {
-          if (error.status !== 404) {
-            console.warn(`Error al cargar: ${path}`, error);
+          if (error.status === 404) {
+            return of({
+              name: path.split('/').pop() || '',
+              path: path,
+              type: 'file',
+              url: '',
+              content: '',
+              notFound: true,
+            } as GithubContent & { notFound: boolean });
           }
-          // Retornar un objeto GithubContent vacío o con indicación de error
+          console.warn(`Error al cargar: ${path}`, error);
           return of({
             name: path.split('/').pop() || '',
             path: path,
             type: 'file',
             url: '',
-            content: '', // Contenido vacío para evitar fallos en decodificación
+            content: '',
           } as GithubContent);
         }),
       );
