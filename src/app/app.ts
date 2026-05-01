@@ -45,6 +45,7 @@ interface ContributorWeekStats {
   messages: string[];
   files: string[];
   isGoalMet: boolean;
+  isFullyDocumented: boolean;
   debt: number;
   documentedCount: number;
   undocumentedCount: number;
@@ -62,6 +63,7 @@ export interface ContributorInfo {
   weeklyStats: ContributorWeekStats[];
   totalDebt: number;
   isCurrentGoalMet: boolean;
+  isFullyDocumented: boolean;
   totalDocumented: number;
   totalUndocumented: number;
 }
@@ -598,28 +600,49 @@ export class App implements OnInit, OnDestroy {
       )
         return;
 
-      if (!contributorsData[author]) {
-        contributorsData[author] = {};
-      }
       const weekStart = App.getStartOfWeek(date);
       const weekKey = weekStart.toISOString().split('T')[0];
 
-      if (!contributorsData[author][weekKey]) {
-        contributorsData[author][weekKey] = {
-          messages: [],
-          files: [],
-          documented: [],
-          undocumented: [],
-        };
-      }
-
-      contributorsData[author][weekKey].messages.push(commit.commit.message);
       relevantFiles.forEach((file) => {
-        if (!contributorsData[author][weekKey].files.includes(file)) {
-          contributorsData[author][weekKey].files.push(file);
-          // Por defecto lo ponemos como no documentado hasta que se analice
-          // Pero en este punto no tenemos el contenido.
-          // El análisis de documentación se hará después o aquí si tenemos el contenido.
+        // Intentar determinar el colaborador por la ruta del archivo
+        // Estructura esperada: Resueltos_por_competidor/Nombre_Colaborador/Archivo.ext
+        let fileContributor = author;
+        const parts = file.split('/');
+        const folderIndex = parts.indexOf('Resueltos_por_competidor');
+
+        // Si el archivo está dentro de Resueltos_por_competidor, el siguiente nivel es el competidor
+        if (folderIndex !== -1 && parts.length > folderIndex + 1) {
+          fileContributor = parts[folderIndex + 1];
+        } else if (folderIndex !== -1) {
+          // Si el archivo está directamente en Resueltos_por_competidor, usar el autor del commit
+          fileContributor = author;
+        } else {
+          // Si no está en la carpeta objetivo, ignorar
+          return;
+        }
+
+        // Si el fileContributor está oculto, ignorar este archivo
+        if (this.hiddenContributors.includes(fileContributor)) return;
+
+        if (!contributorsData[fileContributor]) {
+          contributorsData[fileContributor] = {};
+        }
+
+        if (!contributorsData[fileContributor][weekKey]) {
+          contributorsData[fileContributor][weekKey] = {
+            messages: [],
+            files: [],
+            documented: [],
+            undocumented: [],
+          };
+        }
+
+        if (!contributorsData[fileContributor][weekKey].messages.includes(commit.commit.message)) {
+          contributorsData[fileContributor][weekKey].messages.push(commit.commit.message);
+        }
+
+        if (!contributorsData[fileContributor][weekKey].files.includes(file)) {
+          contributorsData[fileContributor][weekKey].files.push(file);
         }
       });
     });
@@ -635,8 +658,9 @@ export class App implements OnInit, OnDestroy {
       const fileRequests = allUniqueFiles.map(path =>
         this.githubService.getFileContent(path).pipe(
           map(content => {
-            if (!content || !content.content) return { path, content: '' };
-            try {
+          if (!content || content.notFound) return { path, content: '', notFound: true };
+          if (!content.content) return { path, content: '', notFound: false };
+          try {
               const base64 = content.content.replace(/\s/g, '');
               const binaryString = atob(base64);
               const bytes = new Uint8Array(binaryString.length);
@@ -644,10 +668,10 @@ export class App implements OnInit, OnDestroy {
                 bytes[i] = binaryString.charCodeAt(i);
               }
               const decoded = new TextDecoder('utf-8').decode(bytes);
-              return { path, content: decoded };
+              return { path, content: decoded, notFound: false };
             } catch (e) {
               console.error('Error decodificando contenido para validación:', e);
-              return { path, content: '' };
+              return { path, content: '', notFound: false };
             }
           })
         )
@@ -657,15 +681,23 @@ export class App implements OnInit, OnDestroy {
       forkJoin(fileRequests).subscribe({
         next: (filesWithContent) => {
           const fileDocStatus: { [path: string]: boolean } = {};
+          const filesNotFound: string[] = [];
           filesWithContent.forEach(f => {
-            // Si el contenido está vacío, validateDocumentation devolverá false (no documentado)
-            fileDocStatus[f.path] = this.validateDocumentation(f.content, f.path);
+            if (f.notFound) {
+              filesNotFound.push(f.path);
+            } else {
+              // Si el contenido está vacío, validateDocumentation devolverá false (no documentado)
+              fileDocStatus[f.path] = this.validateDocumentation(f.content, f.path);
+            }
           });
 
           // Actualizar contributorsData con el estado de documentación
-          Object.values(contributorsData).forEach(weeks => {
-            Object.values(weeks).forEach(data => {
-              data.files.forEach(f => {
+          Object.values(contributorsData).forEach((weeks: any) => {
+            Object.values(weeks).forEach((data: any) => {
+              // Filtrar archivos que no existen
+              data.files = data.files.filter((f: string) => !filesNotFound.includes(f));
+
+              data.files.forEach((f: string) => {
                 if (fileDocStatus[f]) {
                   data.documented.push(f);
                 } else {
@@ -727,6 +759,7 @@ export class App implements OnInit, OnDestroy {
           accumulatedDebt = Math.max(0, accumulatedDebt - count);
 
           const isGoalMet = accumulatedDebt === 0;
+          const isFullyDocumented = count > 0 ? undocumentedCount === 0 : true;
 
           return {
             weekStart: new Date(weekKey),
@@ -735,6 +768,7 @@ export class App implements OnInit, OnDestroy {
             messages: data.messages,
             files: data.files,
             isGoalMet,
+            isFullyDocumented,
             debt: accumulatedDebt,
             documentedCount,
             undocumentedCount,
@@ -765,6 +799,7 @@ export class App implements OnInit, OnDestroy {
         }
 
         const finalDebt = accumulatedDebt;
+        const isFullyDocumented = totalUndocumented === 0;
 
         return {
           login,
@@ -773,6 +808,7 @@ export class App implements OnInit, OnDestroy {
           weeklyStats,
           totalDebt: finalDebt,
           isCurrentGoalMet: finalDebt === 0,
+          isFullyDocumented,
           totalDocumented,
           totalUndocumented,
         };
@@ -807,12 +843,18 @@ export class App implements OnInit, OnDestroy {
       /Autor:/i,
       /Problema:/i,
       /Juez\s+online:/i,
-      /Veredicto:\s*(Accepted|Correct|Yes|Ok|Passed)/i,
+      /Veredicto:\s*(Accepted|Correct|Yes|Ok|Passed|Aceptado)/i,
       /URL:/i
     ];
 
+    // Normalización de términos (opcional para campos que varían entre idiomas)
+    // Se añade soporte explícito para "Juez en línea" y "Enlace"
+    const normalizedContent = content
+      .replace(/Juez\s+en\s+línea:/i, 'Juez online:')
+      .replace(/Enlace:/i, 'URL:');
+
     // Verificar que todos los campos existan en el contenido
-    return patterns.every(regex => regex.test(content));
+    return patterns.every(regex => regex.test(normalizedContent));
   }
 
   /**
@@ -946,6 +988,14 @@ export class App implements OnInit, OnDestroy {
    */
   getPassedContributors(): ContributorInfo[] {
     return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet);
+  }
+
+  getPassedWithDocs(): ContributorInfo[] {
+    return this.getPassedContributors().filter((c) => c.isFullyDocumented);
+  }
+
+  getPassedWithoutDocs(): ContributorInfo[] {
+    return this.getPassedContributors().filter((c) => !c.isFullyDocumented);
   }
 
   /**

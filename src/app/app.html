@@ -121,13 +121,50 @@
 
       <div class="competitors-split">
         <div class="competitors-column">
-          <h3 class="text-success"><i class="fas fa-check-circle"></i> Cumplen Meta</h3>
+          <h3 class="text-success"><i class="fas fa-check-circle"></i> Cumplen Meta con Documentación</h3>
           <div class="contributor-grid">
             <div
-              *ngFor="let contributor of getPassedContributors()"
+              *ngFor="let contributor of getPassedWithDocs()"
               [class.active]="selectedContributor === contributor.login"
               (click)="selectContributor(contributor.login)"
               class="contributor-card"
+            >
+              <img
+                *ngIf="contributor.avatarUrl"
+                [src]="contributor.avatarUrl"
+                class="card-avatar"
+                [alt]="contributor.login"
+              />
+              <i *ngIf="!contributor.avatarUrl" class="fas fa-user-circle"></i>
+              <div class="card-info">
+                <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
+                <span class="card-stats">{{ contributor.totalFiles }} ejercicios</span>
+                <span class="doc-stats">
+                  <i class="fas fa-file-signature text-success" title="Documentados"></i>
+                  {{ contributor.totalDocumented }}
+                  <i class="fas fa-file-excel text-danger" title="No documentados"></i>
+                  {{ contributor.totalUndocumented }}
+                </span>
+              </div>
+              <a
+                [href]="'https://github.com/' + contributor.login"
+                target="_blank"
+                class="github-profile-btn"
+                (click)="$event.stopPropagation()"
+                title="Ver perfil de GitHub"
+              >
+                <i class="fab fa-github"></i>
+              </a>
+            </div>
+          </div>
+
+          <h3 style="color: #f1c40f; margin-top: 20px;"><i class="fas fa-exclamation-circle"></i> Cumplen Meta sin Documentación</h3>
+          <div class="contributor-grid">
+            <div
+              *ngFor="let contributor of getPassedWithoutDocs()"
+              [class.active]="selectedContributor === contributor.login"
+              (click)="selectContributor(contributor.login)"
+              class="contributor-card warning"
             >
               <img
                 *ngIf="contributor.avatarUrl"
@@ -270,8 +307,11 @@
                     <strong>{{ week.weekStart | date: 'dd/MM/yyyy' }}</strong>
                   </td>
                   <td>
-                    <span *ngIf="week.isGoalMet" class="status-icon success" title="Meta cumplida">
+                    <span *ngIf="week.isGoalMet && week.isFullyDocumented" class="status-icon success" title="Meta cumplida con documentación">
                       <i class="fas fa-check-circle"></i>
+                    </span>
+                    <span *ngIf="week.isGoalMet && !week.isFullyDocumented" class="status-icon warning" title="Meta cumplida sin documentación">
+                      <i class="fas fa-exclamation-circle"></i>
                     </span>
                     <span
                       *ngIf="!week.isGoalMet"
