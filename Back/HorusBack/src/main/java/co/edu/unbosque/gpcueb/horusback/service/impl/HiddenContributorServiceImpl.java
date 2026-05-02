@@ -35,7 +35,7 @@ public class HiddenContributorServiceImpl implements HiddenContributorService {
     }
 
     @Override
-    public void deleteHidden(String nickname) {
-        repository.deleteById(nickname);
+    public void deleteHidden(String id) {
+        repository.deleteById(id);
     }
 }

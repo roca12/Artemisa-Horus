@@ -6,5 +6,5 @@ import java.util.List;
 public interface HiddenContributorService {
     List<HiddenContributorDTO> getAllHidden();
     HiddenContributorDTO saveHidden(HiddenContributorDTO hiddenDTO);
-    void deleteHidden(String nickname);
+    void deleteHidden(String id);
 }

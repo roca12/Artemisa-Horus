@@ -15,6 +15,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class HiddenContributor {
     @Id
-    @Column(name = "github_nickname")
-    private String githubNickname;
+    @Column(name = "entity_id")
+    private String entityId;
+
+    @Column(name = "entity_type")
+    private String entityType; // "USER" or "FOLDER"
 }

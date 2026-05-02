@@ -8,5 +8,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class HiddenContributorDTO {
-    private String githubNickname;
+    private String entityId;
+    private String entityType;
 }

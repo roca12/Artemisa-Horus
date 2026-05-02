@@ -10,7 +10,8 @@ export interface UserMapping {
 }
 
 export interface HiddenContributor {
-  githubNickname: string;
+  entityId: string;
+  entityType: string;
 }
 
 @Injectable({
@@ -41,7 +42,7 @@ export class ConfigService {
     return this.http.post<HiddenContributor>(`${this.apiUrl}/hidden`, contributor);
   }
 
-  deleteHidden(nickname: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/hidden/${nickname}`);
+  deleteHidden(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/hidden/${id}`);
   }
 }

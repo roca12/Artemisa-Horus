@@ -8,9 +8,9 @@ import {
   ElementRef,
 } from '@angular/core';
 import { GithubService, GithubCommit, GithubCollaborator, GithubContent } from './github.service';
-import { ConfigService } from './config.service';
-import { forkJoin, Subscription, interval } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { ConfigService, UserMapping, HiddenContributor } from './config.service';
+import { forkJoin, Subscription, interval, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 
 /**
@@ -323,10 +323,13 @@ export class App implements OnInit, OnDestroy {
         this.userMappings = mappingsObj;
 
         // Actualizar ocultos
-        this.hiddenContributors = config.hidden.map((h) => h.githubNickname);
+        this.hiddenContributors = config.hidden.map(
+          (h: HiddenContributor) => `${h.entityType}:${h.entityId}`,
+        );
         APP_CONFIG.EXCLUDED_LOGINS.forEach((login) => {
-          if (!this.hiddenContributors.includes(login)) {
-            this.hiddenContributors.push(login);
+          const userPrefixId = `USER:${login}`;
+          if (!this.hiddenContributors.includes(userPrefixId)) {
+            this.hiddenContributors.push(userPrefixId);
           }
         });
 
@@ -362,18 +365,17 @@ export class App implements OnInit, OnDestroy {
             ),
           ),
         ),
+      repoFolders: this.githubService
+        .getFolderContents(folderPath)
+        .pipe(catchError(() => of([] as GithubContent[]))),
     }).subscribe({
-      next: (data: {
-        generalCommits: GithubCommit[];
-        folderCommits: GithubCommit[];
-        allContributors: GithubCollaborator[];
-      }) => {
+      next: (data) => {
         console.log('Datos recibidos correctamente:', data);
         this.loadingProgress = 20; // 20% tras la primera carga
 
         // Filtrar commits desde la fecha configurada para reducir las peticiones de detalle
         const recentFolderCommits = data.folderCommits.filter(
-          (c) => new Date(c.commit.author.date) >= APP_CONFIG.START_DATE,
+          (c: GithubCommit) => new Date(c.commit.author.date) >= APP_CONFIG.START_DATE,
         );
 
         if (recentFolderCommits.length > 0) {
@@ -393,7 +395,11 @@ export class App implements OnInit, OnDestroy {
           forkJoin(detailRequests).subscribe({
             next: (detailedCommits: GithubCommit[]) => {
               this.processCommits(data.generalCommits);
-              this.processFolderContributors(detailedCommits, data.allContributors);
+              this.processFolderContributors(
+                detailedCommits,
+                data.allContributors,
+                data.repoFolders,
+              );
 
               if (this.commitsByWeek.length > 0) {
                 this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
@@ -410,7 +416,7 @@ export class App implements OnInit, OnDestroy {
           });
         } else {
           this.processCommits(data.generalCommits);
-          this.processFolderContributors([], data.allContributors);
+          this.processFolderContributors([], data.allContributors, data.repoFolders);
 
           if (this.commitsByWeek.length > 0) {
             this.selectedWeek = this.commitsByWeek[0].weekStart.toISOString().split('T')[0];
@@ -516,6 +522,7 @@ export class App implements OnInit, OnDestroy {
   private processFolderContributors(
     commits: GithubCommit[],
     allGitHubContributors: GithubCollaborator[] = [],
+    repoFolders: GithubContent[] = [],
   ) {
     const contributorsData: {
       [login: string]: {
@@ -528,6 +535,22 @@ export class App implements OnInit, OnDestroy {
       };
     } = {};
 
+    // Inicializar con carpetas físicas encontradas en el repositorio (solo directorios)
+    repoFolders.forEach((folder) => {
+      if (folder.type === 'dir') {
+        const folderName = folder.name;
+        // El nickname para verificar ocultación es el mapeado o el nombre de carpeta si no hay mapeo
+        const githubNickname = this.folderToGithub[folderName.toLowerCase()] || folderName;
+
+        if (
+          !this.hiddenContributors.includes(`USER:${githubNickname}`) &&
+          !this.hiddenContributors.includes(`FOLDER:${folderName}`)
+        ) {
+          contributorsData[folderName] = {};
+        }
+      }
+    });
+
     // Inicializar datos para TODOS los colaboradores de GitHub (si no están ocultos)
     // Pero solo los mantenemos si tienen una carpeta asociada o si queremos que aparezcan vacíos
     // El requerimiento dice: "mapea para que solo se presenten los dueños de las carpetas"
@@ -535,7 +558,7 @@ export class App implements OnInit, OnDestroy {
     // O mejor, filtramos al final para que solo aparezcan los que tienen actividad o son mapeados.
     allGitHubContributors.forEach((c) => {
       const login = c.login;
-      if (login && !this.hiddenContributors.includes(login)) {
+      if (login && !this.hiddenContributors.includes(`USER:${login}`)) {
         // Inicializar pero solo si es necesario mostrar a todos
         // contributorsData[login] = {};
       }
@@ -581,7 +604,7 @@ export class App implements OnInit, OnDestroy {
 
       // Si el autor está oculto o es copilot (o bot), ignorar
       if (
-        this.hiddenContributors.includes(author) ||
+        this.hiddenContributors.includes(`USER:${author}`) ||
         APP_CONFIG.EXCLUDED_LOGINS.includes(author) ||
         (author && author.toLowerCase().includes('copilot'))
       )
@@ -615,6 +638,15 @@ export class App implements OnInit, OnDestroy {
               fileOwner = pathParts[0];
             }
           }
+        }
+
+        // Verificar si el dueño detectado está oculto
+        const ownerNickname = this.folderToGithub[fileOwner.toLowerCase()] || fileOwner;
+        if (
+          this.hiddenContributors.includes(ownerNickname) ||
+          this.hiddenContributors.includes(fileOwner)
+        ) {
+          return;
         }
 
         if (!contributorsData[fileOwner]) {

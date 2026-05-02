@@ -38,13 +38,15 @@
               <h5>1. Seleccionar Colaborador</h5>
               <div class="selector-scroll">
                 <div
-                  *ngFor="let c of contributors()"
+                  *ngFor="let c of sortedContributors()"
                   class="collaborator-item"
                   [class.selected]="newNickname === c.login"
+                  [class.mapped]="isNicknameMapped(c.login)"
                   (click)="selectCollaborator(c)"
                 >
                   <img [src]="c.avatar_url" class="avatar-sm" [alt]="c.login" />
                   <span>{{ c.login }}</span>
+                  <span class="mapped-badge" *ngIf="isNicknameMapped(c.login)">Mapeado</span>
                   <i class="fas fa-check-circle" *ngIf="newNickname === c.login"></i>
                 </div>
               </div>
@@ -58,8 +60,9 @@
                 <div class="select-wrapper">
                   <select [(ngModel)]="newFolderName" class="admin-input">
                     <option value="" disabled selected>Seleccione una carpeta...</option>
-                    <option *ngFor="let folder of repoFolders()" [value]="folder">
-                      {{ folder }} {{ isMapped(folder) ? '(Ya mapeada)' : '' }}
+                    <option *ngFor="let folder of sortedRepoFolders()" [value]="folder">
+                      {{ isMapped(folder) ? '✓ ' : '⚠ ' }} {{ folder }}
+                      {{ isMapped(folder) ? '(Ya mapeada)' : '(Pendiente)' }}
                     </option>
                   </select>
                   <i class="fas fa-folder-open"></i>
@@ -164,7 +167,10 @@
           </div>
 
           <div class="tab-content" *ngIf="activeAdminTab === 'github'">
-            <div class="table-scroll">
+            <div class="section-header-compact">
+              <h5><i class="fab fa-github"></i> Colaboradores de GitHub</h5>
+            </div>
+            <div class="table-scroll" style="margin-bottom: 2rem">
               <table class="admin-table">
                 <thead>
                   <tr>
@@ -196,7 +202,7 @@
                         <i class="fab fa-github"></i>
                       </button>
                       <button
-                        (click)="toggleHideContributor(c.login)"
+                        (click)="toggleHideEntity(c.login)"
                         class="btn-icon"
                         [class.btn-hide]="!isHidden(c.login)"
                         [class.btn-show]="isHidden(c.login)"
@@ -205,6 +211,59 @@
                         <i
                           class="fas"
                           [ngClass]="isHidden(c.login) ? 'fa-eye' : 'fa-eye-slash'"
+                        ></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="section-header-compact">
+              <h5><i class="fas fa-folder"></i> Carpetas del Repositorio</h5>
+            </div>
+            <div class="table-scroll">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Icono</th>
+                    <th>Nombre de Carpeta</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    *ngFor="let folder of repoFolders()"
+                    [class.hidden-row]="isHidden(folder, true)"
+                  >
+                    <td>
+                      <div class="user-cell">
+                        <i
+                          class="fas fa-folder"
+                          style="color: var(--primary-color); font-size: 1.2rem"
+                        ></i>
+                      </div>
+                    </td>
+                    <td>
+                      <code class="folder-tag">{{ folder }}</code>
+                    </td>
+                    <td>
+                      <span class="status-badge" [class.status-ok]="!isHidden(folder, true)">
+                        {{ isHidden(folder, true) ? 'Oculta' : 'Visible' }}
+                      </span>
+                    </td>
+                    <td class="actions">
+                      <button
+                        (click)="toggleHideEntity(folder, true)"
+                        class="btn-icon"
+                        [class.btn-hide]="!isHidden(folder, true)"
+                        [class.btn-show]="isHidden(folder, true)"
+                        [title]="isHidden(folder, true) ? 'Mostrar' : 'Ocultar'"
+                      >
+                        <i
+                          class="fas"
+                          [ngClass]="isHidden(folder, true) ? 'fa-eye' : 'fa-eye-slash'"
                         ></i>
                       </button>
                     </td>

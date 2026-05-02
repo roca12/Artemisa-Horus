@@ -201,9 +201,26 @@
   background: rgba(var(--primary-rgb), 0.1);
 }
 
+.collaborator-item.mapped {
+  background: rgba(39, 174, 96, 0.05);
+  opacity: 0.8;
+}
+
 .collaborator-item.selected {
   background: var(--accent-color);
   color: white;
+  opacity: 1;
+}
+
+.mapped-badge {
+  font-size: 0.65rem;
+  background: var(--success-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .collaborator-item.selected span {
@@ -468,6 +485,23 @@ body.dark-theme .admin-table tr.mapped {
   text-align: center;
   color: var(--text-muted);
   padding: 2rem !important;
+}
+
+.section-header-compact {
+  border-left: 4px solid var(--accent-color);
+  padding: 10px 15px;
+  background: var(--tab-header-bg);
+  border-radius: 0 8px 8px 0;
+  margin-top: 1rem;
+}
+
+.section-header-compact h5 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .admin-footer {
