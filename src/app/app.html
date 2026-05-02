@@ -147,7 +147,8 @@
                 </span>
               </div>
               <a
-                [href]="'https://github.com/' + contributor.login"
+                *ngIf="getGithubLink(contributor) as githubLogin"
+                [href]="'https://github.com/' + githubLogin"
                 target="_blank"
                 class="github-profile-btn"
                 (click)="$event.stopPropagation()"
@@ -155,6 +156,14 @@
               >
                 <i class="fab fa-github"></i>
               </a>
+              <span
+                *ngIf="!getGithubLink(contributor)"
+                class="mapping-warning"
+                title="Falta mapeo por parte del coach"
+                (click)="$event.stopPropagation()"
+              >
+                <i class="fas fa-exclamation-triangle"></i>
+              </span>
             </div>
           </div>
         </div>
@@ -188,7 +197,8 @@
                 </span>
               </div>
               <a
-                [href]="'https://github.com/' + contributor.login"
+                *ngIf="getGithubLink(contributor) as githubLogin"
+                [href]="'https://github.com/' + githubLogin"
                 target="_blank"
                 class="github-profile-btn"
                 (click)="$event.stopPropagation()"
@@ -196,6 +206,14 @@
               >
                 <i class="fab fa-github"></i>
               </a>
+              <span
+                *ngIf="!getGithubLink(contributor)"
+                class="mapping-warning"
+                title="Falta mapeo por parte del coach"
+                (click)="$event.stopPropagation()"
+              >
+                <i class="fas fa-exclamation-triangle"></i>
+              </span>
             </div>
           </div>
         </div>
@@ -217,13 +235,21 @@
                 >({{ selected.login }})</span
               >
               <a
-                [href]="'https://github.com/' + selected.login"
+                *ngIf="getGithubLink(selected) as githubLogin"
+                [href]="'https://github.com/' + githubLogin"
                 target="_blank"
                 class="github-link-btn"
                 title="Ver perfil de GitHub"
               >
                 <i class="fab fa-github"></i>
               </a>
+              <span
+                *ngIf="!getGithubLink(selected)"
+                class="mapping-warning-inline"
+                title="Falta mapeo por parte del coach"
+              >
+                <i class="fas fa-exclamation-triangle"></i> Falta mapeo
+              </span>
             </h3>
             <p>
               Total de archivos/aportes desde el 20/04/2026:
@@ -536,9 +562,9 @@
   <!-- Modal de Administración -->
   <app-admin
     *ngIf="showAdmin"
+    [contributorsInFolder]="contributorsInFolder"
+    [githubToReal]="githubToReal"
+    [folderToRealName]="folderToRealName"
     (closePanel)="toggleAdmin()"
-    [passedContributors]="getPassedContributors()"
-    [failedContributors]="getFailedContributors()"
-    [userMappings]="userMappings"
   ></app-admin>
 </div>

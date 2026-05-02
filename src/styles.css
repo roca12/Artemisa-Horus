@@ -1447,6 +1447,31 @@ body.dark-theme .github-profile-btn:hover {
   color: var(--danger-color);
 }
 
+.mapping-warning {
+  color: #f39c12;
+  font-size: 1.2rem;
+  margin-left: auto;
+  cursor: help;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.mapping-warning-inline {
+  color: #f39c12;
+  font-size: 0.9rem;
+  font-weight: normal;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 10px;
+  cursor: help;
+  vertical-align: middle;
+}
+
 /* Documentation Status Styles */
 .doc-stats {
   display: flex;

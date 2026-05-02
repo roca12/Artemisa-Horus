@@ -13,7 +13,6 @@ import { ConfigService, UserMapping } from '../config.service';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
 import { compareSync } from 'bcryptjs';
-import { ContributorInfo } from '../app';
 import html2canvas from 'html2canvas';
 import { forkJoin } from 'rxjs';
 
@@ -30,20 +29,27 @@ export class Admin implements OnInit {
   /** Event emitted when the admin panel is closed. */
   @Output() readonly closePanel = new EventEmitter<void>();
 
-  /** List of contributors who have met their goals. */
-  @Input() passedContributors: ContributorInfo[] = [];
-
-  /** List of contributors who have not met their goals. */
-  @Input() failedContributors: ContributorInfo[] = [];
-
-  /** Current mappings from backend. */
-  @Input() userMappings: { [nickname: string]: string } = {};
-
-  /** Mapping of Folder names to GitHub nicknames. */
-  folderToGithub: { [folderName: string]: string } = {};
+  /** List of contributors in the analyzed folder. */
+  @Input() contributorsInFolder: any[] = [];
 
   /** Mapping of GitHub nicknames to real names. */
-  githubToReal: { [nickname: string]: string } = {};
+  @Input() githubToReal: { [nickname: string]: string } = {};
+
+  /** Mapping of folder names to real names. */
+  @Input() folderToRealName: { [folderName: string]: string } = {};
+
+  /** Mapping of folder names to github nicknames. */
+  folderToGithub: { [folderName: string]: string } = {};
+
+  /** List of contributors who have met the current goal. */
+  get passedContributors() {
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet);
+  }
+
+  /** List of contributors who have not met the current goal. */
+  get failedContributors() {
+    return this.contributorsInFolder.filter((c) => !c.isCurrentGoalMet);
+  }
 
   /** Reference to the report content element for image generation. */
   @ViewChild('reportContent') reportContent!: ElementRef;
@@ -413,7 +419,7 @@ export class Admin implements OnInit {
   }
 
   /**
-   * Emits the close panel event.
+   * Closes the admin panel.
    */
   onClose() {
     this.closePanel.emit();
@@ -430,7 +436,7 @@ export class Admin implements OnInit {
   }
 
   /**
-   * Generates and downloads a report image of the weekly status.
+   * Generates and downloads an image report of the weekly status.
    */
   downloadReport() {
     if (!this.reportContent) {

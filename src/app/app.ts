@@ -14,6 +14,27 @@ import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 
 /**
+ * Constantes globales de configuración de la aplicación.
+ */
+const APP_CONFIG = {
+  START_DATE: new Date(2026, 3, 20), // 20 de Abril de 2026
+  EXCLUDED_LOGINS: [
+    'github-copilot[bot]',
+    'copilot',
+    'github-copilot',
+    'azure-pipelines-bot',
+    'github-actions[bot]',
+    'roca12',
+    'anfeespi',
+    'exiic',
+    'DiegoF1311',
+  ],
+  SYSTEM_FOLDERS: ['src', 'node_modules', 'public', 'scripts', '.github', '.idea', 'dist'],
+  FILE_EXTENSIONS: ['.java', '.cpp', '.py'],
+  AUTO_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutos
+};
+
+/**
  * Interface representing code mirror editor instance.
  */
 interface CodeMirrorEditor {
@@ -164,10 +185,9 @@ export class App implements OnInit, OnDestroy {
    */
   ngOnInit() {
     this.initTheme();
-    this.loadSettings();
     this.loadData();
-    // Configurar recarga automática cada 5 minutos
-    this.refreshSubscription = interval(5 * 60 * 1000).subscribe(() => {
+    // Configurar recarga automática
+    this.refreshSubscription = interval(APP_CONFIG.AUTO_REFRESH_INTERVAL).subscribe(() => {
       console.log('Recargando datos automáticamente...');
       this.loadData();
     });
@@ -220,55 +240,10 @@ export class App implements OnInit, OnDestroy {
   toggleAdmin() {
     this.showAdmin = !this.showAdmin;
     if (!this.showAdmin) {
-      this.loadSettings(); // Recargar mapeos y configuraciones al cerrar el admin
+      this.loadData(); // Recargar todo al cerrar el admin para reflejar cambios
     }
   }
 
-  /**
-   * Loads settings from the backend, including user mappings and hidden contributors.
-   */
-  private loadSettings() {
-    // Cargar mapeos desde backend
-    this.configService.getMappings().subscribe({
-      next: (mappings) => {
-        const mappingsObj: { [nickname: string]: string } = {};
-        mappings.forEach((mapping) => {
-          mappingsObj[mapping.githubNickname.toLowerCase()] = mapping.realName;
-        });
-        this.userMappings = mappingsObj;
-        this.cdr.detectChanges();
-      },
-      error: (err) => console.error('Error al cargar mapeos desde backend:', err),
-    });
-
-    // Cargar contribuidores ocultos desde backend
-    this.configService.getHidden().subscribe({
-      next: (hidden) => {
-        const excludedLogins = [
-          'github-copilot[bot]',
-          'copilot',
-          'github-copilot',
-          'azure-pipelines-bot',
-          'github-actions[bot]',
-          'roca12',
-          'anfeespi',
-          'exiic',
-          'DiegoF1311',
-        ];
-
-        this.hiddenContributors = hidden.map((h) => h.githubNickname);
-
-        // Asegurarse de que los excluidos estén siempre ocultos
-        excludedLogins.forEach((login) => {
-          if (!this.hiddenContributors.includes(login)) {
-            this.hiddenContributors.push(login);
-          }
-        });
-        this.cdr.detectChanges();
-      },
-      error: (err) => console.error('Error al cargar colaboradores ocultos desde backend:', err),
-    });
-  }
 
   /**
    * Gets the display name for a contributor (folder owner).
@@ -321,17 +296,6 @@ export class App implements OnInit, OnDestroy {
     this.loadingProgress = 0;
     this.error = null;
     const folderPath = 'Resueltos_por_competidor';
-    const excludedLogins = [
-      'github-copilot[bot]',
-      'copilot',
-      'github-copilot',
-      'azure-pipelines-bot',
-      'github-actions[bot]',
-      'roca12',
-      'anfeespi',
-      'exiic',
-      'DiegoF1311',
-    ];
 
     // Asegurarse de tener las configuraciones antes de cargar datos de GitHub
     forkJoin({
@@ -343,32 +307,37 @@ export class App implements OnInit, OnDestroy {
         const realNames: { [folder: string]: string } = {};
         const githubNicknames: { [folder: string]: string } = {};
         const gitToReal: { [nickname: string]: string } = {};
+        const mappingsObj: { [nickname: string]: string } = {};
+
         config.mappings.forEach((mapping) => {
           const folderLower = mapping.folderName.toLowerCase();
           const gitLower = mapping.githubNickname.toLowerCase();
           realNames[folderLower] = mapping.realName;
           githubNicknames[folderLower] = mapping.githubNickname;
           gitToReal[gitLower] = mapping.realName;
+          mappingsObj[gitLower] = mapping.realName;
         });
+
         this.folderToRealName = realNames;
         this.folderToGithub = githubNicknames;
         this.githubToReal = gitToReal;
+        this.userMappings = mappingsObj;
 
         // Actualizar ocultos
         this.hiddenContributors = config.hidden.map((h) => h.githubNickname);
-        excludedLogins.forEach((login) => {
+        APP_CONFIG.EXCLUDED_LOGINS.forEach((login) => {
           if (!this.hiddenContributors.includes(login)) {
             this.hiddenContributors.push(login);
           }
         });
 
         // Ahora cargar datos de GitHub
-        this.fetchGitHubData(folderPath, excludedLogins);
+        this.fetchGitHubData(folderPath, APP_CONFIG.EXCLUDED_LOGINS);
       },
       error: (err) => {
         console.error('Error al cargar configuraciones iniciales:', err);
         // Intentar cargar GitHub data de todos modos o manejar error
-        this.fetchGitHubData(folderPath, excludedLogins);
+        this.fetchGitHubData(folderPath, APP_CONFIG.EXCLUDED_LOGINS);
       },
     });
   }
@@ -403,10 +372,9 @@ export class App implements OnInit, OnDestroy {
         console.log('Datos recibidos correctamente:', data);
         this.loadingProgress = 20; // 20% tras la primera carga
 
-        // Filtrar commits desde el 20/04/2026 para reducir las peticiones de detalle
-        const startDate = new Date(2026, 3, 20); // 20 de Abril de 2026
+        // Filtrar commits desde la fecha configurada para reducir las peticiones de detalle
         const recentFolderCommits = data.folderCommits.filter(
-          (c) => new Date(c.commit.author.date) >= startDate,
+          (c) => new Date(c.commit.author.date) >= APP_CONFIG.START_DATE,
         );
 
         if (recentFolderCommits.length > 0) {
@@ -576,20 +544,8 @@ export class App implements OnInit, OnDestroy {
 
     // Determinar la semana actual y la primera semana de interés
     const now = new Date();
-    const excludedLogins = [
-      'github-copilot[bot]',
-      'copilot',
-      'github-copilot',
-      'azure-pipelines-bot',
-      'github-actions[bot]',
-      'roca12',
-      'anfeespi',
-      'exiic',
-      'DiegoF1311',
-    ];
     const currentWeekStart = App.getStartOfWeek(now);
-    const startDate = new Date(2026, 3, 20);
-    const firstWeekStart = App.getStartOfWeek(startDate);
+    const firstWeekStart = App.getStartOfWeek(APP_CONFIG.START_DATE);
 
     // Generar todas las semanas desde la primera hasta la actual
     const allWeeks: string[] = [];
@@ -606,18 +562,18 @@ export class App implements OnInit, OnDestroy {
     commits.forEach((commit) => {
       const date = new Date(commit.commit.author.date);
 
-      // Solo incluir commits desde el 20/04/2026 en adelante
-      if (date < startDate) {
+      // Solo incluir commits desde la fecha de inicio configurada
+      if (date < APP_CONFIG.START_DATE) {
         return;
       }
 
-      // Filtrar archivos java, cpp, python y excluir eliminaciones
+      // Filtrar archivos por extensiones configuradas y excluir eliminaciones
       const relevantFiles = (commit.files || [])
         .filter((f) => f.status !== 'removed')
         .map((f) => f.filename)
         .filter((name) => {
           const lower = name.toLowerCase();
-          return lower.endsWith('.java') || lower.endsWith('.cpp') || lower.endsWith('.py');
+          return APP_CONFIG.FILE_EXTENSIONS.some((ext) => lower.endsWith(ext));
         });
 
       if (relevantFiles.length === 0) return;
@@ -627,7 +583,7 @@ export class App implements OnInit, OnDestroy {
       // Si el autor está oculto o es copilot (o bot), ignorar
       if (
         this.hiddenContributors.includes(author) ||
-        excludedLogins.includes(author) ||
+        APP_CONFIG.EXCLUDED_LOGINS.includes(author) ||
         (author && author.toLowerCase().includes('copilot'))
       )
         return;
@@ -650,9 +606,8 @@ export class App implements OnInit, OnDestroy {
             fileOwner = pathParts[1];
           } else {
             // Para cualquier otra carpeta, asumimos que el primer nivel define al dueño/categoría
-            // A menos que sea una carpeta raíz de código fuente o configuración (que no debería tener estos archivos)
-            const rootFoldersToIgnore = ['src', 'node_modules', 'public', 'scripts', '.github', '.idea', 'dist'];
-            if (rootFoldersToIgnore.includes(pathParts[0])) {
+            // A menos que sea una carpeta raíz de código fuente o configuración
+            if (APP_CONFIG.SYSTEM_FOLDERS.includes(pathParts[0])) {
               fileOwner = author;
             } else {
               fileOwner = pathParts[0];
@@ -912,10 +867,10 @@ export class App implements OnInit, OnDestroy {
    * @returns Clase CSS correspondiente.
    */
   getDebtClass(debt: number): string {
-    if (debt <= 0) return '';
-    if (debt === 1) return 'debt-yellow';
-    if (debt === 2) return 'debt-orange';
-    return 'debt-red';
+    if (debt <= 0) return 'debt-none';
+    if (debt === 1) return 'debt-low';
+    if (debt === 2) return 'debt-medium';
+    return 'debt-high';
   }
 
   /**
@@ -1045,6 +1000,17 @@ export class App implements OnInit, OnDestroy {
    */
   getFailedContributors(): ContributorInfo[] {
     return this.contributorsInFolder.filter((c) => !c.isCurrentGoalMet);
+  }
+
+  /**
+   * Gets the GitHub login to use for external links.
+   * If the contributor's login is a folder name, it tries to find the mapped GitHub nickname.
+   * @param contributor The contributor info.
+   * @returns The GitHub login string or null if not mapped.
+   */
+  getGithubLink(contributor: ContributorInfo): string | null {
+    const mapped = this.folderToGithub[contributor.login.toLowerCase()];
+    return mapped || null;
   }
 
   /**
