@@ -7,6 +7,7 @@ import {
   Input,
   ViewChild,
   ElementRef,
+  computed,
 } from '@angular/core';
 import { GithubService, GithubCollaborator, GithubContent } from '../github.service';
 import { ConfigService, UserMapping } from '../config.service';
@@ -73,6 +74,26 @@ export class Admin implements OnInit {
   today = new Date();
   weekRange = '';
   activeAdminTab = 'mappings';
+
+  /** Sorted repository folders: unmapped first. */
+  sortedRepoFolders = computed(() => {
+    return [...this.repoFolders()].sort((a, b) => {
+      const aMapped = this.isMapped(a);
+      const bMapped = this.isMapped(b);
+      if (aMapped === bMapped) return a.localeCompare(b);
+      return aMapped ? 1 : -1;
+    });
+  });
+
+  /** Sorted GitHub contributors: unmapped first. */
+  sortedContributors = computed(() => {
+    return [...this.contributors()].sort((a, b) => {
+      const aMapped = this.isNicknameMapped(a.login);
+      const bMapped = this.isNicknameMapped(b.login);
+      if (aMapped === bMapped) return a.login.localeCompare(b.login);
+      return aMapped ? 1 : -1;
+    });
+  });
 
   constructor(
     private githubService: GithubService,
@@ -364,6 +385,17 @@ export class Admin implements OnInit {
   isMapped(folderName: string): boolean {
     return this.mappings().some(
       (mapping) => mapping.folderName.toLowerCase() === folderName.toLowerCase(),
+    );
+  }
+
+  /**
+   * Checks if a GitHub nickname already has a mapping.
+   * @param nickname The GitHub nickname to check.
+   * @returns True if mapped, false otherwise.
+   */
+  isNicknameMapped(nickname: string): boolean {
+    return this.mappings().some(
+      (mapping) => mapping.githubNickname.toLowerCase() === nickname.toLowerCase(),
     );
   }
 

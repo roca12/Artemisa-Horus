@@ -201,9 +201,26 @@
   background: rgba(var(--primary-rgb), 0.1);
 }
 
+.collaborator-item.mapped {
+  background: rgba(39, 174, 96, 0.05);
+  opacity: 0.8;
+}
+
 .collaborator-item.selected {
   background: var(--accent-color);
   color: white;
+  opacity: 1;
+}
+
+.mapped-badge {
+  font-size: 0.65rem;
+  background: var(--success-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .collaborator-item.selected span {

@@ -36,13 +36,15 @@
               <h5>1. Seleccionar Colaborador</h5>
               <div class="selector-scroll">
                 <div
-                  *ngFor="let c of contributors()"
+                  *ngFor="let c of sortedContributors()"
                   class="collaborator-item"
                   [class.selected]="newNickname === c.login"
+                  [class.mapped]="isNicknameMapped(c.login)"
                   (click)="selectCollaborator(c)"
                 >
                   <img [src]="c.avatar_url" class="avatar-sm" [alt]="c.login">
                   <span>{{ c.login }}</span>
+                  <span class="mapped-badge" *ngIf="isNicknameMapped(c.login)">Mapeado</span>
                   <i class="fas fa-check-circle" *ngIf="newNickname === c.login"></i>
                 </div>
               </div>
@@ -56,8 +58,8 @@
                 <div class="select-wrapper">
                   <select [(ngModel)]="newFolderName" class="admin-input">
                     <option value="" disabled selected>Seleccione una carpeta...</option>
-                    <option *ngFor="let folder of repoFolders()" [value]="folder">
-                      {{ folder }} {{ isMapped(folder) ? '(Ya mapeada)' : '' }}
+                    <option *ngFor="let folder of sortedRepoFolders()" [value]="folder">
+                      {{ isMapped(folder) ? '✓ ' : '⚠ ' }} {{ folder }} {{ isMapped(folder) ? '(Ya mapeada)' : '(Pendiente)' }}
                     </option>
                   </select>
                   <i class="fas fa-folder-open"></i>
