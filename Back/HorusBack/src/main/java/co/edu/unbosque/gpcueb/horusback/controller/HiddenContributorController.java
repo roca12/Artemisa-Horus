@@ -36,8 +36,8 @@ public class HiddenContributorController {
         return service.saveHidden(hiddenDTO);
     }
 
-    @DeleteMapping("/{nickname}")
-    public void delete(@PathVariable String nickname) {
-        service.deleteHidden(nickname);
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable String id) {
+        service.deleteHidden(id);
     }
 }

@@ -10,7 +10,7 @@ import {
   computed,
 } from '@angular/core';
 import { GithubService, GithubCollaborator, GithubContent } from '../github.service';
-import { ConfigService, UserMapping } from '../config.service';
+import { ConfigService, UserMapping, HiddenContributor } from '../config.service';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
 import { compareSync } from 'bcryptjs';
@@ -229,37 +229,43 @@ export class Admin implements OnInit {
    */
   loadHidden() {
     this.configService.getHidden().subscribe({
-      next: (data: any[]) => this.hiddenContributors.set(data.map((h) => h.githubNickname)),
-      error: (err: any) => console.error('Error al cargar colaboradores ocultos:', err),
+      next: (data: HiddenContributor[]) =>
+        this.hiddenContributors.set(data.map((h) => `${h.entityType}:${h.entityId}`)),
+      error: (err: any) => console.error('Error al cargar entidades ocultas:', err),
     });
   }
 
   /**
-   * Toggles the visibility of a contributor.
-   * @param login The GitHub login of the contributor.
+   * Toggles the visibility of a contributor or folder.
+   * @param id The GitHub login or folder name.
+   * @param isFolder Whether the entity is a folder.
    */
-  toggleHideContributor(login: string) {
+  toggleHideEntity(id: string, isFolder = false) {
     const current = this.hiddenContributors();
-    if (current.includes(login)) {
-      this.configService.deleteHidden(login).subscribe({
+    const type = isFolder ? 'FOLDER' : 'USER';
+    const typeLabel = isFolder ? 'Carpeta' : 'Colaborador';
+    const compositeId = `${type}:${id}`;
+
+    if (current.includes(compositeId)) {
+      this.configService.deleteHidden(id).subscribe({
         next: () => {
-          this.hiddenContributors.set(current.filter((l) => l !== login));
-          this.toastr.info(`Colaborador ${login} visible`);
+          this.hiddenContributors.set(current.filter((l) => l !== compositeId));
+          this.toastr.info(`${typeLabel} ${id} ahora es visible`);
         },
         error: (err) => {
-          console.error('Error al mostrar colaborador:', err);
-          this.toastr.error('Error al actualizar colaborador');
+          console.error(`Error al mostrar ${typeLabel.toLowerCase()}:`, err);
+          this.toastr.error('Error al actualizar visibilidad');
         },
       });
     } else {
-      this.configService.saveHidden({ githubNickname: login }).subscribe({
+      this.configService.saveHidden({ entityId: id, entityType: type }).subscribe({
         next: () => {
-          this.hiddenContributors.set([...current, login]);
-          this.toastr.info(`Colaborador ${login} oculto`);
+          this.hiddenContributors.set([...current, compositeId]);
+          this.toastr.info(`${typeLabel} ${id} ahora está oculto`);
         },
         error: (err) => {
-          console.error('Error al ocultar colaborador:', err);
-          this.toastr.error('Error al actualizar colaborador');
+          console.error(`Error al ocultar ${typeLabel.toLowerCase()}:`, err);
+          this.toastr.error('Error al actualizar visibilidad');
         },
       });
     }
@@ -270,8 +276,9 @@ export class Admin implements OnInit {
    * @param login The GitHub login of the contributor.
    * @returns True if hidden, false otherwise.
    */
-  isHidden(login: string): boolean {
-    return this.hiddenContributors().includes(login);
+  isHidden(id: string, isFolder = false): boolean {
+    const type = isFolder ? 'FOLDER' : 'USER';
+    return this.hiddenContributors().includes(`${type}:${id}`);
   }
 
   /**

@@ -487,6 +487,23 @@ body.dark-theme .admin-table tr.mapped {
   padding: 2rem !important;
 }
 
+.section-header-compact {
+  border-left: 4px solid var(--accent-color);
+  padding: 10px 15px;
+  background: var(--tab-header-bg);
+  border-radius: 0 8px 8px 0;
+  margin-top: 1rem;
+}
+
+.section-header-compact h5 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .admin-footer {
   padding: 1rem 2rem;
   border-top: 1px solid var(--border-color);
