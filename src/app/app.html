@@ -124,10 +124,56 @@
           <h3 class="text-success"><i class="fas fa-check-circle"></i> Cumplen Meta</h3>
           <div class="contributor-grid">
             <div
-              *ngFor="let contributor of getPassedContributors()"
+              *ngFor="let contributor of getFullyPassedContributors()"
               [class.active]="selectedContributor === contributor.login"
               (click)="selectContributor(contributor.login)"
               class="contributor-card"
+            >
+              <img
+                *ngIf="contributor.avatarUrl"
+                [src]="contributor.avatarUrl"
+                class="card-avatar"
+                [alt]="contributor.login"
+              />
+              <i *ngIf="!contributor.avatarUrl" class="fas fa-user-circle"></i>
+              <div class="card-info">
+                <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
+                <span class="card-stats">{{ contributor.totalFiles }} ejercicios</span>
+                <span class="doc-stats">
+                  <i class="fas fa-file-signature text-success" title="Documentados"></i>
+                  {{ contributor.totalDocumented }}
+                </span>
+              </div>
+              <a
+                *ngIf="getGithubLink(contributor) as githubLogin"
+                [href]="'https://github.com/' + githubLogin"
+                target="_blank"
+                class="github-profile-btn"
+                (click)="$event.stopPropagation()"
+                title="Ver perfil de GitHub"
+              >
+                <i class="fab fa-github"></i>
+              </a>
+              <span
+                *ngIf="!getGithubLink(contributor)"
+                class="mapping-warning"
+                title="Falta mapeo por parte del coach"
+                (click)="$event.stopPropagation()"
+              >
+                <i class="fas fa-exclamation-triangle"></i>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="competitors-column">
+          <h3 class="text-warning"><i class="fas fa-exclamation-circle"></i> Cumplen Meta (Falta Doc.)</h3>
+          <div class="contributor-grid">
+            <div
+              *ngFor="let contributor of getPassedWithMissingDocContributors()"
+              [class.active]="selectedContributor === contributor.login"
+              (click)="selectContributor(contributor.login)"
+              class="contributor-card warning"
             >
               <img
                 *ngIf="contributor.avatarUrl"
@@ -271,6 +317,7 @@
               <select [(ngModel)]="statusFilter">
                 <option value="all">Todos</option>
                 <option value="met">Meta Cumplida</option>
+                <option value="missing_doc">Falta Documentación</option>
                 <option value="failed">Pendientes</option>
               </select>
             </div>
@@ -296,8 +343,11 @@
                     <strong>{{ week.weekStart | date: 'dd/MM/yyyy' }}</strong>
                   </td>
                   <td>
-                    <span *ngIf="week.isGoalMet" class="status-icon success" title="Meta cumplida">
+                    <span *ngIf="week.isGoalMet && week.undocumentedCount === 0" class="status-icon success" title="Meta cumplida">
                       <i class="fas fa-check-circle"></i>
+                    </span>
+                    <span *ngIf="week.isGoalMet && week.undocumentedCount > 0" class="status-icon warning" title="Meta cumplida pero falta documentación">
+                      <i class="fas fa-exclamation-circle"></i>
                     </span>
                     <span
                       *ngIf="!week.isGoalMet"

@@ -10,6 +10,7 @@
   --accent-hover: #2980b9;
   --success-color: #27ae60;
   --danger-color: #e74c3c;
+  --warning-color: #f39c12;
   --background-color: #f0f2f5;
   --card-background: #ffffff;
   --text-color: #2c3e50;
@@ -36,6 +37,7 @@ body.dark-theme {
   --accent-hover: #5dade2;
   --success-color: #2ecc71;
   --danger-color: #ff5252;
+  --warning-color: #f1c40f;
   --background-color: #121212;
   --card-background: #1e1e1e;
   --text-color: #e0e0e0;
@@ -736,6 +738,10 @@ tr:hover td {
   color: var(--danger-color);
   font-weight: 700;
 }
+.text-warning {
+  color: var(--warning-color);
+  font-weight: 700;
+}
 
 .debt-yellow {
   color: #f1c40f;
@@ -1273,7 +1279,7 @@ tr:hover td {
 /* Estilos para la Actividad por Competidor - Grid de Cumplimiento */
 .competitors-split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 20px;
   margin-bottom: 30px;
 }
@@ -1328,6 +1334,10 @@ tr:hover td {
 
 .contributor-card.failed {
   border-left: 4px solid var(--danger-color);
+}
+
+.contributor-card.warning {
+  border-left: 4px solid var(--warning-color);
 }
 
 .contributor-card.active.failed {
@@ -1441,6 +1451,10 @@ body.dark-theme .github-profile-btn:hover {
 
 .status-icon.success {
   color: var(--success-color);
+}
+
+.status-icon.warning {
+  color: var(--warning-color);
 }
 
 .status-icon.danger {

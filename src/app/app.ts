@@ -115,7 +115,7 @@ export class App implements OnInit, OnDestroy {
   searchTerm = '';
 
   /** Filter for contributor status. */
-  statusFilter = 'all'; // 'all', 'met', 'failed'
+  statusFilter = 'all'; // 'all', 'met', 'missing_doc', 'failed'
 
   /** Current page for table pagination. */
   currentPage = 1;
@@ -931,7 +931,8 @@ export class App implements OnInit, OnDestroy {
       // Filtro por estado
       const matchesStatus =
         this.statusFilter === 'all' ||
-        (this.statusFilter === 'met' && week.isGoalMet) ||
+        (this.statusFilter === 'met' && week.isGoalMet && week.undocumentedCount === 0) ||
+        (this.statusFilter === 'missing_doc' && week.isGoalMet && week.undocumentedCount > 0) ||
         (this.statusFilter === 'failed' && !week.isGoalMet);
 
       // Filtro por búsqueda (en mensajes de commits o nombres de archivos)
@@ -987,11 +988,23 @@ export class App implements OnInit, OnDestroy {
   }
 
   /**
-   * Gets the list of contributors who have met the current goal.
-   * @returns List of successful contributors.
+   * Gets the list of contributors who have met the current goal and have all exercises documented.
+   * @returns List of successful and documented contributors.
    */
-  getPassedContributors(): ContributorInfo[] {
-    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet);
+  getFullyPassedContributors(): ContributorInfo[] {
+    return this.contributorsInFolder.filter(
+      (c) => c.isCurrentGoalMet && c.totalUndocumented === 0,
+    );
+  }
+
+  /**
+   * Gets the list of contributors who have met the current goal but have missing documentation.
+   * @returns List of successful but undocumented contributors.
+   */
+  getPassedWithMissingDocContributors(): ContributorInfo[] {
+    return this.contributorsInFolder.filter(
+      (c) => c.isCurrentGoalMet && c.totalUndocumented > 0,
+    );
   }
 
   /**
