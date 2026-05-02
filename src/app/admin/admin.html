@@ -61,7 +61,8 @@
                   <select [(ngModel)]="newFolderName" class="admin-input">
                     <option value="" disabled selected>Seleccione una carpeta...</option>
                     <option *ngFor="let folder of sortedRepoFolders()" [value]="folder">
-                      {{ isMapped(folder) ? '✓ ' : '⚠ ' }} {{ folder }} {{ isMapped(folder) ? '(Ya mapeada)' : '(Pendiente)' }}
+                      {{ isMapped(folder) ? '✓ ' : '⚠ ' }} {{ folder }}
+                      {{ isMapped(folder) ? '(Ya mapeada)' : '(Pendiente)' }}
                     </option>
                   </select>
                   <i class="fas fa-folder-open"></i>
@@ -232,10 +233,16 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let folder of repoFolders()" [class.hidden-row]="isHidden(folder, true)">
+                  <tr
+                    *ngFor="let folder of repoFolders()"
+                    [class.hidden-row]="isHidden(folder, true)"
+                  >
                     <td>
                       <div class="user-cell">
-                        <i class="fas fa-folder" style="color: var(--primary-color); font-size: 1.2rem"></i>
+                        <i
+                          class="fas fa-folder"
+                          style="color: var(--primary-color); font-size: 1.2rem"
+                        ></i>
                       </div>
                     </td>
                     <td>
