@@ -28,7 +28,9 @@
         <!-- New Visual Mapping Assistant -->
         <div class="mapping-assistant">
           <h4><i class="fas fa-magic"></i> Asistente de Asociación</h4>
-          <p class="helper-text">Haga clic en un colaborador de GitHub y asócielo a su carpeta correspondiente.</p>
+          <p class="helper-text">
+            Haga clic en un colaborador de GitHub y asócielo a su carpeta correspondiente.
+          </p>
 
           <div class="assistant-grid">
             <!-- Collaborators list -->
@@ -42,7 +44,7 @@
                   [class.mapped]="isNicknameMapped(c.login)"
                   (click)="selectCollaborator(c)"
                 >
-                  <img [src]="c.avatar_url" class="avatar-sm" [alt]="c.login">
+                  <img [src]="c.avatar_url" class="avatar-sm" [alt]="c.login" />
                   <span>{{ c.login }}</span>
                   <span class="mapped-badge" *ngIf="isNicknameMapped(c.login)">Mapeado</span>
                   <i class="fas fa-check-circle" *ngIf="newNickname === c.login"></i>
@@ -79,7 +81,11 @@
                 </div>
               </div>
 
-              <button (click)="addMapping()" class="btn-add-full" [disabled]="!newFolderName || !newNickname || !newRealName">
+              <button
+                (click)="addMapping()"
+                class="btn-add-full"
+                [disabled]="!newFolderName || !newNickname || !newRealName"
+              >
                 <i class="fas fa-link"></i> Crear Asociación
               </button>
             </div>
@@ -120,7 +126,11 @@
                   <tr *ngFor="let mapping of mappings()" class="mapped">
                     <td>
                       <div class="user-cell">
-                        <img [src]="getAvatarUrl(mapping.githubNickname)" class="admin-avatar-sm" alt="">
+                        <img
+                          [src]="getAvatarUrl(mapping.githubNickname)"
+                          class="admin-avatar-sm"
+                          alt=""
+                        />
                         <strong>{{ mapping.githubNickname }}</strong>
                       </div>
                     </td>
@@ -194,7 +204,10 @@
                         [class.btn-show]="isHidden(c.login)"
                         [title]="isHidden(c.login) ? 'Mostrar' : 'Ocultar'"
                       >
-                        <i class="fas" [ngClass]="isHidden(c.login) ? 'fa-eye' : 'fa-eye-slash'"></i>
+                        <i
+                          class="fas"
+                          [ngClass]="isHidden(c.login) ? 'fa-eye' : 'fa-eye-slash'"
+                        ></i>
                       </button>
                     </td>
                   </tr>

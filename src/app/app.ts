@@ -244,7 +244,6 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
-
   /**
    * Gets the display name for a contributor (folder owner).
    * @param login The folder name.
@@ -602,7 +601,10 @@ export class App implements OnInit, OnDestroy {
         // Si está en subcarpetas, el dueño es el nombre de la carpeta de primer nivel (si no es una carpeta de sistema/infra)
         if (pathParts.length >= 2) {
           // Si está en estas carpetas, el dueño es la carpeta de nivel 2 (el competidor)
-          if (pathParts[0] === 'Resueltos_por_competidor' || pathParts[0] === 'Codigos_por_competidor') {
+          if (
+            pathParts[0] === 'Resueltos_por_competidor' ||
+            pathParts[0] === 'Codigos_por_competidor'
+          ) {
             fileOwner = pathParts[1];
           } else {
             // Para cualquier otra carpeta, asumimos que el primer nivel define al dueño/categoría
@@ -992,9 +994,7 @@ export class App implements OnInit, OnDestroy {
    * @returns List of successful and documented contributors.
    */
   getFullyPassedContributors(): ContributorInfo[] {
-    return this.contributorsInFolder.filter(
-      (c) => c.isCurrentGoalMet && c.totalUndocumented === 0,
-    );
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet && c.totalUndocumented === 0);
   }
 
   /**
@@ -1002,9 +1002,7 @@ export class App implements OnInit, OnDestroy {
    * @returns List of successful but undocumented contributors.
    */
   getPassedWithMissingDocContributors(): ContributorInfo[] {
-    return this.contributorsInFolder.filter(
-      (c) => c.isCurrentGoalMet && c.totalUndocumented > 0,
-    );
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet && c.totalUndocumented > 0);
   }
 
   /**
