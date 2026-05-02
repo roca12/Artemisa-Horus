@@ -41,9 +41,14 @@ export class Admin implements OnInit {
   /** Mapping of folder names to github nicknames. */
   folderToGithub: { [folderName: string]: string } = {};
 
-  /** List of contributors who have met the current goal. */
-  get passedContributors() {
-    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet);
+  /** List of contributors who have met the current goal and have all exercises documented. */
+  get fullyPassedContributors() {
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet && c.totalUndocumented === 0);
+  }
+
+  /** List of contributors who have met the current goal but have missing documentation. */
+  get passedWithMissingDocContributors() {
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet && c.totalUndocumented > 0);
   }
 
   /** List of contributors who have not met the current goal. */

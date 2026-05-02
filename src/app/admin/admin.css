@@ -591,6 +591,9 @@ body.dark-theme .btn-download:hover {
 .passed .section-title {
   color: #2ecc71;
 }
+.warning .section-title {
+  color: #f1c40f;
+}
 .failed .section-title {
   color: #e74c3c;
 }
@@ -613,6 +616,10 @@ body.dark-theme .btn-download:hover {
 
 .report-card.debt {
   border-left: 4px solid #e74c3c;
+}
+
+.report-card.warning {
+  border-left: 4px solid #f1c40f;
 }
 
 .report-avatar {
@@ -640,6 +647,11 @@ body.dark-theme .btn-download:hover {
 
 .report-stat.debt {
   color: #e74c3c;
+  font-weight: 600;
+}
+
+.report-stat.warning {
+  color: #f1c40f;
   font-weight: 600;
 }
 

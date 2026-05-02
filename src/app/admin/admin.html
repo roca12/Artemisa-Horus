@@ -229,15 +229,33 @@
         <div class="report-section passed">
           <h3 class="section-title"><i class="fas fa-check-circle"></i> Al Día (Cumplen Meta)</h3>
           <div class="report-grid">
-            <div *ngFor="let c of passedContributors" class="report-card">
+            <div *ngFor="let c of fullyPassedContributors" class="report-card">
               <img [src]="c.avatarUrl" class="report-avatar" alt="" />
               <div class="report-info">
                 <span class="report-name">{{ getDisplayName(c.login) }}</span>
                 <span class="report-stat">{{ c.totalFiles }} ejercicios</span>
               </div>
             </div>
-            <div *ngIf="passedContributors.length === 0" class="report-empty">
+            <div *ngIf="fullyPassedContributors.length === 0" class="report-empty">
               No hay colaboradores al día.
+            </div>
+          </div>
+        </div>
+
+        <div class="report-section warning">
+          <h3 class="section-title">
+            <i class="fas fa-exclamation-circle"></i> Falta Documentación
+          </h3>
+          <div class="report-grid">
+            <div *ngFor="let c of passedWithMissingDocContributors" class="report-card warning">
+              <img [src]="c.avatarUrl" class="report-avatar" alt="" />
+              <div class="report-info">
+                <span class="report-name">{{ getDisplayName(c.login) }}</span>
+                <span class="report-stat warning">Pendientes: {{ c.totalUndocumented }} doc.</span>
+              </div>
+            </div>
+            <div *ngIf="passedWithMissingDocContributors.length === 0" class="report-empty">
+              No hay documentación pendiente.
             </div>
           </div>
         </div>
