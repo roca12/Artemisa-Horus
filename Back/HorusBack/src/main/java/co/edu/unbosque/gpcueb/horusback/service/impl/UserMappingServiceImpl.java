@@ -35,7 +35,7 @@ public class UserMappingServiceImpl implements UserMappingService {
     }
 
     @Override
-    public void deleteMapping(String nickname) {
-        repository.deleteById(nickname);
+    public void deleteMapping(String folderName) {
+        repository.deleteById(folderName);
     }
 }

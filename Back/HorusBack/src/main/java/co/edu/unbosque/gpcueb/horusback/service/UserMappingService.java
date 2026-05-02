@@ -6,5 +6,5 @@ import java.util.List;
 public interface UserMappingService {
     List<UserMappingDTO> getAllMappings();
     UserMappingDTO saveMapping(UserMappingDTO mappingDTO);
-    void deleteMapping(String nickname);
+    void deleteMapping(String folderName);
 }

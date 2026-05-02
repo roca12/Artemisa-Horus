@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../environments/environment';
 
 export interface UserMapping {
+  folderName: string;
   githubNickname: string;
   realName: string;
 }
@@ -28,8 +29,8 @@ export class ConfigService {
     return this.http.post<UserMapping>(`${this.apiUrl}/mappings`, mapping);
   }
 
-  deleteMapping(nickname: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/mappings/${nickname}`);
+  deleteMapping(folderName: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/mappings/${folderName}`);
   }
 
   getHidden(): Observable<HiddenContributor[]> {

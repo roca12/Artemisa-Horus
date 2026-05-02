@@ -75,15 +75,21 @@ export class GithubService {
   }
 
   getFolderContents(path: string): Observable<GithubContent[]> {
+    const encodedPath = path
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
     return this.http.get<GithubContent[]>(
-      `${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`,
+      `${this.baseUrl}/${this.owner}/${this.repo}/contents/${encodedPath}`,
       this.getHeaders(),
     );
   }
 
   getCommitsByPath(path: string): Observable<GithubCommit[]> {
     return this.http.get<GithubCommit[]>(
-      `${this.baseUrl}/${this.owner}/${this.repo}/commits?path=${path}&per_page=100`,
+      `${this.baseUrl}/${this.owner}/${this.repo}/commits?path=${encodeURIComponent(
+        path,
+      )}&per_page=100`,
       this.getHeaders(),
     );
   }
@@ -96,9 +102,16 @@ export class GithubService {
   }
 
   getFileContent(path: string): Observable<GithubContent & { notFound?: boolean }> {
+    // Codificar cada segmento del path para manejar espacios y caracteres especiales,
+    // pero manteniendo los separadores '/' para que la API de GitHub lo reconozca
+    const encodedPath = path
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+
     return this.http
       .get<GithubContent>(
-        `${this.baseUrl}/${this.owner}/${this.repo}/contents/${path}`,
+        `${this.baseUrl}/${this.owner}/${this.repo}/contents/${encodedPath}`,
         this.getHeaders(),
       )
       .pipe(
@@ -113,14 +126,15 @@ export class GithubService {
               notFound: true,
             } as GithubContent & { notFound: boolean });
           }
-          console.warn(`Error al cargar: ${path}`, error);
+          console.warn(`Error al cargar: ${path} (status: ${error.status})`, error);
           return of({
             name: path.split('/').pop() || '',
             path: path,
             type: 'file',
             url: '',
             content: '',
-          } as GithubContent);
+            notFound: true, // Si hay cualquier error al obtenerlo, lo tratamos como no encontrado para evitar que aparezca si no es accesible
+          } as GithubContent & { notFound: boolean });
         }),
       );
   }

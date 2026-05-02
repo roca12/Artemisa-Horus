@@ -14,6 +14,27 @@ import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 
 /**
+ * Constantes globales de configuración de la aplicación.
+ */
+const APP_CONFIG = {
+  START_DATE: new Date(2026, 3, 20), // 20 de Abril de 2026
+  EXCLUDED_LOGINS: [
+    'github-copilot[bot]',
+    'copilot',
+    'github-copilot',
+    'azure-pipelines-bot',
+    'github-actions[bot]',
+    'roca12',
+    'anfeespi',
+    'exiic',
+    'DiegoF1311',
+  ],
+  SYSTEM_FOLDERS: ['src', 'node_modules', 'public', 'scripts', '.github', '.idea', 'dist'],
+  FILE_EXTENSIONS: ['.java', '.cpp', '.py'],
+  AUTO_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutos
+};
+
+/**
  * Interface representing code mirror editor instance.
  */
 interface CodeMirrorEditor {
@@ -94,7 +115,7 @@ export class App implements OnInit, OnDestroy {
   searchTerm = '';
 
   /** Filter for contributor status. */
-  statusFilter = 'all'; // 'all', 'met', 'failed'
+  statusFilter = 'all'; // 'all', 'met', 'missing_doc', 'failed'
 
   /** Current page for table pagination. */
   currentPage = 1;
@@ -135,7 +156,16 @@ export class App implements OnInit, OnDestroy {
   /** Indicates if the admin panel is shown. */
   showAdmin = false;
 
+  /** Mapping of folder names to real names. */
+  folderToRealName: { [folderName: string]: string } = {};
+
+  /** Mapping of folder names to github nicknames. */
+  folderToGithub: { [folderName: string]: string } = {};
+
   /** Mapping of GitHub nicknames to real names. */
+  githubToReal: { [nickname: string]: string } = {};
+
+  /** Mapping of GitHub nicknames to real names (backend format). */
   userMappings: { [nickname: string]: string } = {};
 
   /** List of hidden contributor logins. */
@@ -155,10 +185,9 @@ export class App implements OnInit, OnDestroy {
    */
   ngOnInit() {
     this.initTheme();
-    this.loadSettings();
     this.loadData();
-    // Configurar recarga automática cada 5 minutos
-    this.refreshSubscription = interval(5 * 60 * 1000).subscribe(() => {
+    // Configurar recarga automática
+    this.refreshSubscription = interval(APP_CONFIG.AUTO_REFRESH_INTERVAL).subscribe(() => {
       console.log('Recargando datos automáticamente...');
       this.loadData();
     });
@@ -211,63 +240,26 @@ export class App implements OnInit, OnDestroy {
   toggleAdmin() {
     this.showAdmin = !this.showAdmin;
     if (!this.showAdmin) {
-      this.loadSettings(); // Recargar mapeos y configuraciones al cerrar el admin
+      this.loadData(); // Recargar todo al cerrar el admin para reflejar cambios
     }
   }
 
   /**
-   * Loads settings from the backend, including user mappings and hidden contributors.
+   * Gets the display name for a contributor (folder owner).
+   * @param login The folder name.
+   * @returns The display name (real name or folder name).
    */
-  private loadSettings() {
-    // Cargar mapeos desde backend
-    this.configService.getMappings().subscribe({
-      next: (mappings) => {
-        const mappingsObj: { [nickname: string]: string } = {};
-        mappings.forEach((mapping) => {
-          mappingsObj[mapping.githubNickname.toLowerCase()] = mapping.realName;
-        });
-        this.userMappings = mappingsObj;
-        this.cdr.detectChanges();
-      },
-      error: (err) => console.error('Error al cargar mapeos desde backend:', err),
-    });
-
-    // Cargar contribuidores ocultos desde backend
-    this.configService.getHidden().subscribe({
-      next: (hidden) => {
-        const excludedLogins = [
-          'github-copilot[bot]',
-          'copilot',
-          'github-copilot',
-          'azure-pipelines-bot',
-          'github-actions[bot]',
-          'roca12',
-          'anfeespi',
-          'exiic',
-          'DiegoF1311',
-        ];
-
-        this.hiddenContributors = hidden.map((h) => h.githubNickname);
-
-        // Asegurarse de que los excluidos estén siempre ocultos
-        excludedLogins.forEach((login) => {
-          if (!this.hiddenContributors.includes(login)) {
-            this.hiddenContributors.push(login);
-          }
-        });
-        this.cdr.detectChanges();
-      },
-      error: (err) => console.error('Error al cargar colaboradores ocultos desde backend:', err),
-    });
+  getDisplayName(login: string): string {
+    return this.folderToRealName[login.toLowerCase()] || login;
   }
 
   /**
-   * Gets the display name for a contributor.
+   * Gets the display name for a contributor (GitHub login).
    * @param login The GitHub login.
    * @returns The display name (real name or login).
    */
-  getDisplayName(login: string): string {
-    return this.userMappings[login.toLowerCase()] || login;
+  getAuthorDisplayName(login: string): string {
+    return this.githubToReal[login.toLowerCase()] || login;
   }
 
   /**
@@ -303,17 +295,6 @@ export class App implements OnInit, OnDestroy {
     this.loadingProgress = 0;
     this.error = null;
     const folderPath = 'Resueltos_por_competidor';
-    const excludedLogins = [
-      'github-copilot[bot]',
-      'copilot',
-      'github-copilot',
-      'azure-pipelines-bot',
-      'github-actions[bot]',
-      'roca12',
-      'anfeespi',
-      'exiic',
-      'DiegoF1311',
-    ];
 
     // Asegurarse de tener las configuraciones antes de cargar datos de GitHub
     forkJoin({
@@ -322,27 +303,40 @@ export class App implements OnInit, OnDestroy {
     }).subscribe({
       next: (config) => {
         // Actualizar mapeos
+        const realNames: { [folder: string]: string } = {};
+        const githubNicknames: { [folder: string]: string } = {};
+        const gitToReal: { [nickname: string]: string } = {};
         const mappingsObj: { [nickname: string]: string } = {};
+
         config.mappings.forEach((mapping) => {
-          mappingsObj[mapping.githubNickname.toLowerCase()] = mapping.realName;
+          const folderLower = mapping.folderName.toLowerCase();
+          const gitLower = mapping.githubNickname.toLowerCase();
+          realNames[folderLower] = mapping.realName;
+          githubNicknames[folderLower] = mapping.githubNickname;
+          gitToReal[gitLower] = mapping.realName;
+          mappingsObj[gitLower] = mapping.realName;
         });
+
+        this.folderToRealName = realNames;
+        this.folderToGithub = githubNicknames;
+        this.githubToReal = gitToReal;
         this.userMappings = mappingsObj;
 
         // Actualizar ocultos
         this.hiddenContributors = config.hidden.map((h) => h.githubNickname);
-        excludedLogins.forEach((login) => {
+        APP_CONFIG.EXCLUDED_LOGINS.forEach((login) => {
           if (!this.hiddenContributors.includes(login)) {
             this.hiddenContributors.push(login);
           }
         });
 
         // Ahora cargar datos de GitHub
-        this.fetchGitHubData(folderPath, excludedLogins);
+        this.fetchGitHubData(folderPath, APP_CONFIG.EXCLUDED_LOGINS);
       },
       error: (err) => {
         console.error('Error al cargar configuraciones iniciales:', err);
         // Intentar cargar GitHub data de todos modos o manejar error
-        this.fetchGitHubData(folderPath, excludedLogins);
+        this.fetchGitHubData(folderPath, APP_CONFIG.EXCLUDED_LOGINS);
       },
     });
   }
@@ -377,10 +371,9 @@ export class App implements OnInit, OnDestroy {
         console.log('Datos recibidos correctamente:', data);
         this.loadingProgress = 20; // 20% tras la primera carga
 
-        // Filtrar commits desde el 20/04/2026 para reducir las peticiones de detalle
-        const startDate = new Date(2026, 3, 20); // 20 de Abril de 2026
+        // Filtrar commits desde la fecha configurada para reducir las peticiones de detalle
         const recentFolderCommits = data.folderCommits.filter(
-          (c) => new Date(c.commit.author.date) >= startDate,
+          (c) => new Date(c.commit.author.date) >= APP_CONFIG.START_DATE,
         );
 
         if (recentFolderCommits.length > 0) {
@@ -503,6 +496,9 @@ export class App implements OnInit, OnDestroy {
       if (excludedLogins.includes(author) || (author && author.toLowerCase().includes('copilot')))
         return;
 
+      // Usar nombre real si está mapeado directamente por el autor del commit
+      const displayName = this.githubToReal[author.toLowerCase()] || author;
+
       weeks[weekKey].commitsCount++;
       weeks[weekKey].authors[author] = (weeks[weekKey].authors[author] || 0) + 1;
     });
@@ -533,29 +529,22 @@ export class App implements OnInit, OnDestroy {
     } = {};
 
     // Inicializar datos para TODOS los colaboradores de GitHub (si no están ocultos)
+    // Pero solo los mantenemos si tienen una carpeta asociada o si queremos que aparezcan vacíos
+    // El requerimiento dice: "mapea para que solo se presenten los dueños de las carpetas"
+    // Así que solo inicializaremos los que ya detectamos como dueños de carpetas en commits recientes
+    // O mejor, filtramos al final para que solo aparezcan los que tienen actividad o son mapeados.
     allGitHubContributors.forEach((c) => {
       const login = c.login;
       if (login && !this.hiddenContributors.includes(login)) {
-        contributorsData[login] = {};
+        // Inicializar pero solo si es necesario mostrar a todos
+        // contributorsData[login] = {};
       }
     });
 
     // Determinar la semana actual y la primera semana de interés
     const now = new Date();
-    const excludedLogins = [
-      'github-copilot[bot]',
-      'copilot',
-      'github-copilot',
-      'azure-pipelines-bot',
-      'github-actions[bot]',
-      'roca12',
-      'anfeespi',
-      'exiic',
-      'DiegoF1311',
-    ];
     const currentWeekStart = App.getStartOfWeek(now);
-    const startDate = new Date(2026, 3, 20);
-    const firstWeekStart = App.getStartOfWeek(startDate);
+    const firstWeekStart = App.getStartOfWeek(APP_CONFIG.START_DATE);
 
     // Generar todas las semanas desde la primera hasta la actual
     const allWeeks: string[] = [];
@@ -572,18 +561,18 @@ export class App implements OnInit, OnDestroy {
     commits.forEach((commit) => {
       const date = new Date(commit.commit.author.date);
 
-      // Solo incluir commits desde el 20/04/2026 en adelante
-      if (date < startDate) {
+      // Solo incluir commits desde la fecha de inicio configurada
+      if (date < APP_CONFIG.START_DATE) {
         return;
       }
 
-      // Filtrar archivos java, cpp, python y excluir eliminaciones
+      // Filtrar archivos por extensiones configuradas y excluir eliminaciones
       const relevantFiles = (commit.files || [])
         .filter((f) => f.status !== 'removed')
         .map((f) => f.filename)
         .filter((name) => {
           const lower = name.toLowerCase();
-          return lower.endsWith('.java') || lower.endsWith('.cpp') || lower.endsWith('.py');
+          return APP_CONFIG.FILE_EXTENSIONS.some((ext) => lower.endsWith(ext));
         });
 
       if (relevantFiles.length === 0) return;
@@ -593,48 +582,76 @@ export class App implements OnInit, OnDestroy {
       // Si el autor está oculto o es copilot (o bot), ignorar
       if (
         this.hiddenContributors.includes(author) ||
-        excludedLogins.includes(author) ||
+        APP_CONFIG.EXCLUDED_LOGINS.includes(author) ||
         (author && author.toLowerCase().includes('copilot'))
       )
         return;
 
-      if (!contributorsData[author]) {
-        contributorsData[author] = {};
-      }
       const weekStart = App.getStartOfWeek(date);
       const weekKey = weekStart.toISOString().split('T')[0];
 
-      if (!contributorsData[author][weekKey]) {
-        contributorsData[author][weekKey] = {
-          messages: [],
-          files: [],
-          documented: [],
-          undocumented: [],
-        };
-      }
-
-      contributorsData[author][weekKey].messages.push(commit.commit.message);
       relevantFiles.forEach((file) => {
-        if (!contributorsData[author][weekKey].files.includes(file)) {
-          contributorsData[author][weekKey].files.push(file);
-          // Por defecto lo ponemos como no documentado hasta que se analice
-          // Pero en este punto no tenemos el contenido.
-          // El análisis de documentación se hará después o aquí si tenemos el contenido.
+        // Determinación del dueño del archivo basado en la estructura de carpetas
+        let fileOwner = author;
+        const pathParts = file.split('/');
+
+        // Buscamos si el archivo está dentro de una subcarpeta de una carpeta raíz conocida
+        // Por ahora 'Resueltos_por_competidor' y 'Codigos_por_competidor' son las principales
+        // Si el archivo está en la raíz, el autor es el dueño.
+        // Si está en subcarpetas, el dueño es el nombre de la carpeta de primer nivel (si no es una carpeta de sistema/infra)
+        if (pathParts.length >= 2) {
+          // Si está en estas carpetas, el dueño es la carpeta de nivel 2 (el competidor)
+          if (
+            pathParts[0] === 'Resueltos_por_competidor' ||
+            pathParts[0] === 'Codigos_por_competidor'
+          ) {
+            fileOwner = pathParts[1];
+          } else {
+            // Para cualquier otra carpeta, asumimos que el primer nivel define al dueño/categoría
+            // A menos que sea una carpeta raíz de código fuente o configuración
+            if (APP_CONFIG.SYSTEM_FOLDERS.includes(pathParts[0])) {
+              fileOwner = author;
+            } else {
+              fileOwner = pathParts[0];
+            }
+          }
+        }
+
+        if (!contributorsData[fileOwner]) {
+          contributorsData[fileOwner] = {};
+        }
+        if (!contributorsData[fileOwner][weekKey]) {
+          contributorsData[fileOwner][weekKey] = {
+            messages: [],
+            files: [],
+            documented: [],
+            undocumented: [],
+          };
+        }
+
+        if (!contributorsData[fileOwner][weekKey].files.includes(file)) {
+          contributorsData[fileOwner][weekKey].files.push(file);
+        }
+        // También atribuimos el mensaje del commit al dueño del archivo para que cuente en sus estadísticas
+        if (!contributorsData[fileOwner][weekKey].messages.includes(commit.commit.message)) {
+          contributorsData[fileOwner][weekKey].messages.push(commit.commit.message);
         }
       });
     });
 
     // Analizar documentación de archivos únicos
-    const allUniqueFiles = Array.from(new Set<string>(
-      Object.values(contributorsData).flatMap(weeks =>
-        Object.values(weeks).flatMap(data => data.files)
-      )
-    ));
+    const allUniqueFiles = Array.from(
+      new Set<string>(
+        Object.values(contributorsData).flatMap((weeks) =>
+          Object.values(weeks).flatMap((data) => data.files),
+        ),
+      ),
+    );
 
     if (allUniqueFiles.length > 0) {
-      const fileRequests = allUniqueFiles.map(path =>
+      const fileRequests = allUniqueFiles.map((path) =>
         this.githubService.getFileContent(path).pipe(
-          map(content => {
+          map((content) => {
             if (content.notFound) return { path, content: '', notFound: true };
             if (!content || !content.content) return { path, content: '', notFound: false };
             try {
@@ -650,31 +667,31 @@ export class App implements OnInit, OnDestroy {
               console.error('Error decodificando contenido para validación:', e);
               return { path, content: '', notFound: false };
             }
-          })
-        )
+          }),
+        ),
       );
 
       // Usar forkJoin para procesar todos los archivos
       forkJoin(fileRequests).subscribe({
         next: (filesWithContent) => {
           const fileDocStatus: { [path: string]: { documented: boolean; exists: boolean } } = {};
-          filesWithContent.forEach(f => {
+          filesWithContent.forEach((f) => {
             if (f.notFound) {
               fileDocStatus[f.path] = { documented: false, exists: false };
             } else {
               fileDocStatus[f.path] = {
                 documented: this.validateDocumentation(f.content, f.path),
-                exists: true
+                exists: true,
               };
             }
           });
 
           // Actualizar contributorsData con el estado de documentación
-          Object.values(contributorsData).forEach(weeks => {
-            Object.values(weeks).forEach(data => {
+          Object.values(contributorsData).forEach((weeks) => {
+            Object.values(weeks).forEach((data) => {
               const originalFiles = [...data.files];
               data.files = []; // Limpiar para re-llenar solo con los que existen
-              originalFiles.forEach(f => {
+              originalFiles.forEach((f) => {
                 const status = fileDocStatus[f];
                 if (status && status.exists) {
                   data.files.push(f);
@@ -689,18 +706,33 @@ export class App implements OnInit, OnDestroy {
           });
 
           // Finalmente procesar los colaboradores (esta parte es la que ya tenemos pero movida aquí)
-          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+          this.finalizeProcessFolderContributors(
+            contributorsData,
+            commits,
+            allGitHubContributors,
+            reversedWeeks,
+          );
         },
         error: (err) => {
           if (err.status !== 404) {
             console.error('Error cargando contenidos de archivos:', err);
           }
           // Si falla, procesamos sin info de documentación
-          this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
-        }
+          this.finalizeProcessFolderContributors(
+            contributorsData,
+            commits,
+            allGitHubContributors,
+            reversedWeeks,
+          );
+        },
       });
     } else {
-      this.finalizeProcessFolderContributors(contributorsData, commits, allGitHubContributors, reversedWeeks);
+      this.finalizeProcessFolderContributors(
+        contributorsData,
+        commits,
+        allGitHubContributors,
+        reversedWeeks,
+      );
     }
   }
 
@@ -708,7 +740,7 @@ export class App implements OnInit, OnDestroy {
     contributorsData: any,
     commits: GithubCommit[],
     allGitHubContributors: GithubCollaborator[],
-    reversedWeeks: string[]
+    reversedWeeks: string[],
   ) {
     this.contributorsInFolder = Object.entries(contributorsData)
       .map(([login, weeksData]: [string, any]) => {
@@ -767,20 +799,23 @@ export class App implements OnInit, OnDestroy {
         }
 
         // Buscar avatar en los commits o en la lista de contribuidores
+        const githubNickname = this.folderToGithub[login.toLowerCase()];
+        const lookupName = githubNickname || login;
+
         const contributorCommit = commits.find(
-          (c) => (c.author?.login || c.commit.author.name) === login,
+          (c) => (c.author?.login || c.commit.author.name) === lookupName,
         );
         let avatarUrl = contributorCommit?.author?.avatar_url;
 
         if (!avatarUrl) {
-          const gitHubUser = allGitHubContributors.find((u) => u.login === login);
+          const gitHubUser = allGitHubContributors.find((u) => u.login === lookupName);
           avatarUrl = gitHubUser?.avatar_url;
         }
 
         const finalDebt = accumulatedDebt;
 
         return {
-          login,
+          login, // Sigue siendo el nombre de la carpeta
           avatarUrl,
           totalFiles: totalDelivered,
           weeklyStats,
@@ -821,11 +856,11 @@ export class App implements OnInit, OnDestroy {
       /Problema:/i,
       /Juez\s+online:/i,
       /Veredicto:\s*(Accepted|Correct|Yes|Ok|Passed)/i,
-      /URL:/i
+      /URL:/i,
     ];
 
     // Verificar que todos los campos existan en el contenido
-    return patterns.every(regex => regex.test(content));
+    return patterns.every((regex) => regex.test(content));
   }
 
   /**
@@ -834,10 +869,10 @@ export class App implements OnInit, OnDestroy {
    * @returns Clase CSS correspondiente.
    */
   getDebtClass(debt: number): string {
-    if (debt <= 0) return '';
-    if (debt === 1) return 'debt-yellow';
-    if (debt === 2) return 'debt-orange';
-    return 'debt-red';
+    if (debt <= 0) return 'debt-none';
+    if (debt === 1) return 'debt-low';
+    if (debt === 2) return 'debt-medium';
+    return 'debt-high';
   }
 
   /**
@@ -898,7 +933,8 @@ export class App implements OnInit, OnDestroy {
       // Filtro por estado
       const matchesStatus =
         this.statusFilter === 'all' ||
-        (this.statusFilter === 'met' && week.isGoalMet) ||
+        (this.statusFilter === 'met' && week.isGoalMet && week.undocumentedCount === 0) ||
+        (this.statusFilter === 'missing_doc' && week.isGoalMet && week.undocumentedCount > 0) ||
         (this.statusFilter === 'failed' && !week.isGoalMet);
 
       // Filtro por búsqueda (en mensajes de commits o nombres de archivos)
@@ -954,11 +990,19 @@ export class App implements OnInit, OnDestroy {
   }
 
   /**
-   * Gets the list of contributors who have met the current goal.
-   * @returns List of successful contributors.
+   * Gets the list of contributors who have met the current goal and have all exercises documented.
+   * @returns List of successful and documented contributors.
    */
-  getPassedContributors(): ContributorInfo[] {
-    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet);
+  getFullyPassedContributors(): ContributorInfo[] {
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet && c.totalUndocumented === 0);
+  }
+
+  /**
+   * Gets the list of contributors who have met the current goal but have missing documentation.
+   * @returns List of successful but undocumented contributors.
+   */
+  getPassedWithMissingDocContributors(): ContributorInfo[] {
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet && c.totalUndocumented > 0);
   }
 
   /**
@@ -967,6 +1011,17 @@ export class App implements OnInit, OnDestroy {
    */
   getFailedContributors(): ContributorInfo[] {
     return this.contributorsInFolder.filter((c) => !c.isCurrentGoalMet);
+  }
+
+  /**
+   * Gets the GitHub login to use for external links.
+   * If the contributor's login is a folder name, it tries to find the mapped GitHub nickname.
+   * @param contributor The contributor info.
+   * @returns The GitHub login string or null if not mapped.
+   */
+  getGithubLink(contributor: ContributorInfo): string | null {
+    const mapped = this.folderToGithub[contributor.login.toLowerCase()];
+    return mapped || null;
   }
 
   /**
@@ -1006,7 +1061,8 @@ export class App implements OnInit, OnDestroy {
       next: (data: GithubContent) => {
         try {
           if (!data || !data.content) {
-            this.fileCode = 'El archivo no se encontró o no tiene contenido (puede que haya sido movido o renombrado).';
+            this.fileCode =
+              'El archivo no se encontró o no tiene contenido (puede que haya sido movido o renombrado).';
             this.loadingCode = false;
             this.cdr.detectChanges();
             return;
@@ -1032,17 +1088,17 @@ export class App implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         }
       },
-        error: (err: { status?: number, message?: string }) => {
-          if (err.status !== 404) {
-            console.error('Error al cargar el archivo individual:', err);
-          }
-          this.fileCode = `Error al cargar el archivo: ${err.message || 'Desconocido'}`;
-          if (err.status === 404) {
-            this.fileCode = 'El archivo no se encontró (404).';
-          }
-          this.loadingCode = false;
-          this.cdr.detectChanges();
-        },
+      error: (err: { status?: number; message?: string }) => {
+        if (err.status !== 404) {
+          console.error('Error al cargar el archivo individual:', err);
+        }
+        this.fileCode = `Error al cargar el archivo: ${err.message || 'Desconocido'}`;
+        if (err.status === 404) {
+          this.fileCode = 'El archivo no se encontró (404).';
+        }
+        this.loadingCode = false;
+        this.cdr.detectChanges();
+      },
     });
   }
 

@@ -36,8 +36,8 @@ public class UserMappingController {
         return service.saveMapping(mappingDTO);
     }
 
-    @DeleteMapping("/{nickname}")
-    public void delete(@PathVariable String nickname) {
-        service.deleteMapping(nickname);
+    @DeleteMapping("/{folderName}")
+    public void delete(@PathVariable String folderName) {
+        service.deleteMapping(folderName);
     }
 }

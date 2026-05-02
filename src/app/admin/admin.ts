@@ -8,13 +8,13 @@ import {
   ViewChild,
   ElementRef,
 } from '@angular/core';
-import { GithubService, GithubCollaborator } from '../github.service';
+import { GithubService, GithubCollaborator, GithubContent } from '../github.service';
 import { ConfigService, UserMapping } from '../config.service';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
 import { compareSync } from 'bcryptjs';
-import { ContributorInfo } from '../app';
 import html2canvas from 'html2canvas';
+import { forkJoin } from 'rxjs';
 
 /**
  * Component for administrative tasks including user mapping and visibility management.
@@ -29,14 +29,32 @@ export class Admin implements OnInit {
   /** Event emitted when the admin panel is closed. */
   @Output() readonly closePanel = new EventEmitter<void>();
 
-  /** List of contributors who have met their goals. */
-  @Input() passedContributors: ContributorInfo[] = [];
-
-  /** List of contributors who have not met their goals. */
-  @Input() failedContributors: ContributorInfo[] = [];
+  /** List of contributors in the analyzed folder. */
+  @Input() contributorsInFolder: any[] = [];
 
   /** Mapping of GitHub nicknames to real names. */
-  @Input() userMappings: { [nickname: string]: string } = {};
+  @Input() githubToReal: { [nickname: string]: string } = {};
+
+  /** Mapping of folder names to real names. */
+  @Input() folderToRealName: { [folderName: string]: string } = {};
+
+  /** Mapping of folder names to github nicknames. */
+  folderToGithub: { [folderName: string]: string } = {};
+
+  /** List of contributors who have met the current goal and have all exercises documented. */
+  get fullyPassedContributors() {
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet && c.totalUndocumented === 0);
+  }
+
+  /** List of contributors who have met the current goal but have missing documentation. */
+  get passedWithMissingDocContributors() {
+    return this.contributorsInFolder.filter((c) => c.isCurrentGoalMet && c.totalUndocumented > 0);
+  }
+
+  /** List of contributors who have not met the current goal. */
+  get failedContributors() {
+    return this.contributorsInFolder.filter((c) => !c.isCurrentGoalMet);
+  }
 
   /** Reference to the report content element for image generation. */
   @ViewChild('reportContent') reportContent!: ElementRef;
@@ -47,10 +65,14 @@ export class Admin implements OnInit {
   contributors = signal<GithubCollaborator[]>([]);
   hiddenContributors = signal<string[]>([]);
 
+  newFolderName = '';
   newNickname = '';
   newRealName = '';
+  repoFolders = signal<string[]>([]);
+  isLoadingFolders = signal(false);
   today = new Date();
   weekRange = '';
+  activeAdminTab = 'mappings';
 
   constructor(
     private githubService: GithubService,
@@ -65,6 +87,34 @@ export class Admin implements OnInit {
     this.loadMappings();
     this.loadHidden();
     this.calculateWeekRange();
+    this.loadRepoFolders();
+  }
+
+  /**
+   * Loads folder names from the repository to facilitate mapping.
+   */
+  loadRepoFolders() {
+    this.isLoadingFolders.set(true);
+    const paths = ['Resueltos_por_competidor', 'Codigos_por_competidor'];
+    const folderSet = new Set<string>();
+
+    forkJoin(paths.map((path) => this.githubService.getFolderContents(path))).subscribe({
+      next: (results: GithubContent[][]) => {
+        results.forEach((contents: GithubContent[]) => {
+          contents.forEach((item: GithubContent) => {
+            if (item.type === 'dir') {
+              folderSet.add(item.name);
+            }
+          });
+        });
+        this.repoFolders.set(Array.from(folderSet).sort());
+        this.isLoadingFolders.set(false);
+      },
+      error: (err: any) => {
+        console.error('Error al cargar carpetas del repositorio:', err);
+        this.isLoadingFolders.set(false);
+      },
+    });
   }
 
   /**
@@ -122,14 +172,14 @@ export class Admin implements OnInit {
       next: (data: GithubCollaborator[]) => {
         // Filter those with push permissions and not bots/excluded
         const filtered = data.filter(
-          (c) =>
+          (c: GithubCollaborator) =>
             c.permissions?.push &&
             !excludedLogins.includes(c.login) &&
             !(c.login && c.login.toLowerCase().includes('copilot')),
         );
         this.contributors.set(filtered);
       },
-      error: (err) => console.error('Error al cargar colaboradores:', err),
+      error: (err: any) => console.error('Error al cargar colaboradores:', err),
     });
   }
 
@@ -138,8 +188,18 @@ export class Admin implements OnInit {
    */
   loadMappings() {
     this.configService.getMappings().subscribe({
-      next: (data) => this.mappings.set(data),
-      error: (err) => console.error('Error al cargar mapeos:', err),
+      next: (data: UserMapping[]) => {
+        this.mappings.set(data);
+        const folderToGit: { [folderName: string]: string } = {};
+        const gitToReal: { [nickname: string]: string } = {};
+        data.forEach((m: UserMapping) => {
+          folderToGit[m.folderName.toLowerCase()] = m.githubNickname;
+          gitToReal[m.githubNickname.toLowerCase()] = m.realName;
+        });
+        this.folderToGithub = folderToGit;
+        this.githubToReal = gitToReal;
+      },
+      error: (err: any) => console.error('Error al cargar mapeos:', err),
     });
   }
 
@@ -148,8 +208,8 @@ export class Admin implements OnInit {
    */
   loadHidden() {
     this.configService.getHidden().subscribe({
-      next: (data) => this.hiddenContributors.set(data.map((h) => h.githubNickname)),
-      error: (err) => console.error('Error al cargar colaboradores ocultos:', err),
+      next: (data: any[]) => this.hiddenContributors.set(data.map((h) => h.githubNickname)),
+      error: (err: any) => console.error('Error al cargar colaboradores ocultos:', err),
     });
   }
 
@@ -194,51 +254,92 @@ export class Admin implements OnInit {
   }
 
   /**
-   * Adds a new user mapping between a GitHub nickname and a real name.
+   * Adds a new user mapping between a folder name, GitHub nickname and real name.
    */
   addMapping() {
-    if (this.newNickname.trim() && this.newRealName.trim()) {
+    if (this.newFolderName.trim() && this.newNickname.trim() && this.newRealName.trim()) {
       const current = this.mappings();
       const exists = current.find(
-        (mapping) => mapping.githubNickname.toLowerCase() === this.newNickname.toLowerCase(),
+        (mapping) => mapping.folderName.toLowerCase() === this.newFolderName.toLowerCase(),
       );
 
       if (exists) {
-        this.toastr.warning('Este nickname ya está registrado');
+        this.toastr.warning('Esta carpeta ya tiene un mapeo. Elimínelo primero para cambiarlo.');
         return;
       }
 
       const newMapping: UserMapping = {
+        folderName: this.newFolderName.trim(),
         githubNickname: this.newNickname.trim(),
         realName: this.newRealName.trim(),
       };
 
       this.configService.saveMapping(newMapping).subscribe({
-        next: (saved) => {
+        next: (saved: UserMapping) => {
           this.mappings.set([...current, saved]);
+          this.folderToGithub[saved.folderName.toLowerCase()] = saved.githubNickname;
+          this.githubToReal[saved.githubNickname.toLowerCase()] = saved.realName;
+          this.newFolderName = '';
           this.newNickname = '';
           this.newRealName = '';
           this.toastr.success('Mapeo guardado correctamente');
         },
-        error: (err) => {
+        error: (err: any) => {
           console.error('Error al guardar mapeo:', err);
           this.toastr.error('Error al guardar mapeo');
         },
       });
+    } else {
+      this.toastr.warning('Por favor complete todos los campos');
     }
   }
 
   /**
-   * Removes an existing user mapping.
-   * @param nickname The GitHub nickname to remove the mapping for.
+   * Selects a collaborator to pre-fill the mapping form.
+   * @param collaborator The GitHub collaborator.
    */
-  removeMapping(nickname: string) {
-    this.configService.deleteMapping(nickname).subscribe({
+  selectCollaborator(collaborator: GithubCollaborator) {
+    this.newNickname = collaborator.login;
+    // Si ya existe un mapeo para este nickname, podemos sugerir el nombre real
+    const existing = this.mappings().find(
+      (m) => m.githubNickname.toLowerCase() === collaborator.login.toLowerCase(),
+    );
+    if (existing) {
+      this.newRealName = existing.realName;
+    }
+    this.toastr.info(`Colaborador ${collaborator.login} seleccionado`);
+  }
+
+  /**
+   * Gets the avatar URL for a given GitHub nickname.
+   * @param nickname The GitHub nickname.
+   * @returns The avatar URL or a default one.
+   */
+  getAvatarUrl(nickname: string): string {
+    const contributor = this.contributors().find(
+      (c) => c.login.toLowerCase() === nickname.toLowerCase(),
+    );
+    return contributor?.avatar_url || `https://github.com/${nickname}.png`;
+  }
+
+  /**
+   * Removes an existing user mapping.
+   * @param folderName The folder name to remove the mapping for.
+   */
+  removeMapping(folderName: string) {
+    this.configService.deleteMapping(folderName).subscribe({
       next: () => {
-        this.mappings.set(this.mappings().filter((mapping) => mapping.githubNickname !== nickname));
+        const mapping = this.mappings().find((m: UserMapping) => m.folderName === folderName);
+        if (mapping) {
+          delete this.folderToGithub[mapping.folderName.toLowerCase()];
+          // No borramos de githubToReal porque otros mapeos podrían usarlo
+        }
+        this.mappings.set(
+          this.mappings().filter((mapping: UserMapping) => mapping.folderName !== folderName),
+        );
         this.toastr.info('Mapeo eliminado');
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('Error al eliminar mapeo:', err);
         this.toastr.error('Error al eliminar mapeo');
       },
@@ -246,34 +347,46 @@ export class Admin implements OnInit {
   }
 
   /**
-   * Fills the mapping form with the selected nickname.
-   * @param nickname The GitHub nickname to fill.
+   * Fills the mapping form with the selected folder name.
+   * @param folderName The folder name to fill.
    */
-  fillMapping(nickname: string) {
-    this.newNickname = nickname;
+  fillMapping(folderName: string) {
+    this.newFolderName = folderName;
+    this.newNickname = '';
     this.newRealName = '';
-    // Focus real name input if possible, but here we just set the value
   }
 
   /**
-   * Checks if a nickname already has a mapping.
-   * @param nickname The GitHub nickname to check.
+   * Checks if a folder name already has a mapping.
+   * @param folderName The folder name to check.
    * @returns True if mapped, false otherwise.
    */
-  isMapped(nickname: string): boolean {
+  isMapped(folderName: string): boolean {
     return this.mappings().some(
-      (mapping) => mapping.githubNickname.toLowerCase() === nickname.toLowerCase(),
+      (mapping) => mapping.folderName.toLowerCase() === folderName.toLowerCase(),
     );
   }
 
   /**
-   * Gets the real name associated with a GitHub nickname.
-   * @param nickname The GitHub nickname.
+   * Gets the GitHub nickname associated with a folder name.
+   * @param folderName The folder name.
+   * @returns The GitHub nickname or an empty string if not found.
+   */
+  getGithubNickname(folderName: string): string {
+    const mapping = this.mappings().find(
+      (m) => m.folderName.toLowerCase() === folderName.toLowerCase(),
+    );
+    return mapping ? mapping.githubNickname : '';
+  }
+
+  /**
+   * Gets the real name associated with a folder name.
+   * @param folderName The folder name.
    * @returns The real name or an empty string if not found.
    */
-  getRealName(nickname: string): string {
+  getRealName(folderName: string): string {
     const mapping = this.mappings().find(
-      (m) => m.githubNickname.toLowerCase() === nickname.toLowerCase(),
+      (m) => m.folderName.toLowerCase() === folderName.toLowerCase(),
     );
     return mapping ? mapping.realName : '';
   }
@@ -311,23 +424,24 @@ export class Admin implements OnInit {
   }
 
   /**
-   * Emits the close panel event.
+   * Closes the admin panel.
    */
   onClose() {
     this.closePanel.emit();
   }
 
   /**
-   * Gets the display name (real name or login) for a contributor.
-   * @param login The GitHub login.
+   * Gets the display name (real name or login) for a contributor (folder owner).
+   * @param login The folder name.
    * @returns The display name.
    */
   getDisplayName(login: string): string {
-    return this.userMappings[login.toLowerCase()] || login;
+    const realName = this.getRealName(login);
+    return realName || login;
   }
 
   /**
-   * Generates and downloads a report image of the weekly status.
+   * Generates and downloads an image report of the weekly status.
    */
   downloadReport() {
     if (!this.reportContent) {
