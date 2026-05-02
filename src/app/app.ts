@@ -533,10 +533,15 @@ export class App implements OnInit, OnDestroy {
     } = {};
 
     // Inicializar datos para TODOS los colaboradores de GitHub (si no están ocultos)
+    // Pero solo los mantenemos si tienen una carpeta asociada o si queremos que aparezcan vacíos
+    // El requerimiento dice: "mapea para que solo se presenten los dueños de las carpetas"
+    // Así que solo inicializaremos los que ya detectamos como dueños de carpetas en commits recientes
+    // O mejor, filtramos al final para que solo aparezcan los que tienen actividad o son mapeados.
     allGitHubContributors.forEach((c) => {
       const login = c.login;
       if (login && !this.hiddenContributors.includes(login)) {
-        contributorsData[login] = {};
+        // Inicializar pero solo si es necesario mostrar a todos
+        // contributorsData[login] = {};
       }
     });
 
@@ -598,28 +603,52 @@ export class App implements OnInit, OnDestroy {
       )
         return;
 
-      if (!contributorsData[author]) {
-        contributorsData[author] = {};
-      }
       const weekStart = App.getStartOfWeek(date);
       const weekKey = weekStart.toISOString().split('T')[0];
 
-      if (!contributorsData[author][weekKey]) {
-        contributorsData[author][weekKey] = {
-          messages: [],
-          files: [],
-          documented: [],
-          undocumented: [],
-        };
-      }
-
-      contributorsData[author][weekKey].messages.push(commit.commit.message);
       relevantFiles.forEach((file) => {
-        if (!contributorsData[author][weekKey].files.includes(file)) {
-          contributorsData[author][weekKey].files.push(file);
-          // Por defecto lo ponemos como no documentado hasta que se analice
-          // Pero en este punto no tenemos el contenido.
-          // El análisis de documentación se hará después o aquí si tenemos el contenido.
+        // Determinación del dueño del archivo basado en la estructura de carpetas
+        let fileOwner = author;
+        const pathParts = file.split('/');
+
+        // Buscamos si el archivo está dentro de una subcarpeta de una carpeta raíz conocida
+        // Por ahora 'Resueltos_por_competidor' es la principal, pero el requerimiento pide "todas las carpetas y subcarpetas"
+        // Si el archivo está en la raíz, el autor es el dueño.
+        // Si está en subcarpetas, el dueño es el nombre de la carpeta de primer nivel (si no es una carpeta de sistema/infra)
+        if (pathParts.length >= 2) {
+          // Si está en 'Resueltos_por_competidor', el dueño es la carpeta de nivel 2
+          if (pathParts[0] === 'Resueltos_por_competidor') {
+            fileOwner = pathParts[1];
+          } else {
+            // Para cualquier otra carpeta, asumimos que el primer nivel define al dueño/categoría
+            // A menos que sea una carpeta raíz de código fuente o configuración (que no debería tener estos archivos)
+            const rootFoldersToIgnore = ['src', 'node_modules', 'public', 'scripts', '.github', '.idea', 'dist'];
+            if (rootFoldersToIgnore.includes(pathParts[0])) {
+              fileOwner = author;
+            } else {
+              fileOwner = pathParts[0];
+            }
+          }
+        }
+
+        if (!contributorsData[fileOwner]) {
+          contributorsData[fileOwner] = {};
+        }
+        if (!contributorsData[fileOwner][weekKey]) {
+          contributorsData[fileOwner][weekKey] = {
+            messages: [],
+            files: [],
+            documented: [],
+            undocumented: [],
+          };
+        }
+
+        if (!contributorsData[fileOwner][weekKey].files.includes(file)) {
+          contributorsData[fileOwner][weekKey].files.push(file);
+        }
+        // También atribuimos el mensaje del commit al dueño del archivo para que cuente en sus estadísticas
+        if (!contributorsData[fileOwner][weekKey].messages.includes(commit.commit.message)) {
+          contributorsData[fileOwner][weekKey].messages.push(commit.commit.message);
         }
       });
     });
