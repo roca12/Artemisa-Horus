@@ -612,12 +612,12 @@ export class App implements OnInit, OnDestroy {
         const pathParts = file.split('/');
 
         // Buscamos si el archivo está dentro de una subcarpeta de una carpeta raíz conocida
-        // Por ahora 'Resueltos_por_competidor' es la principal, pero el requerimiento pide "todas las carpetas y subcarpetas"
+        // Por ahora 'Resueltos_por_competidor' y 'Codigos_por_competidor' son las principales
         // Si el archivo está en la raíz, el autor es el dueño.
         // Si está en subcarpetas, el dueño es el nombre de la carpeta de primer nivel (si no es una carpeta de sistema/infra)
         if (pathParts.length >= 2) {
-          // Si está en 'Resueltos_por_competidor', el dueño es la carpeta de nivel 2
-          if (pathParts[0] === 'Resueltos_por_competidor') {
+          // Si está en estas carpetas, el dueño es la carpeta de nivel 2 (el competidor)
+          if (pathParts[0] === 'Resueltos_por_competidor' || pathParts[0] === 'Codigos_por_competidor') {
             fileOwner = pathParts[1];
           } else {
             // Para cualquier otra carpeta, asumimos que el primer nivel define al dueño/categoría
