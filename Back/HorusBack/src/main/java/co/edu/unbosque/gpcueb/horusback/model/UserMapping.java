@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class UserMapping {
     @Id
+    private String folderName;
     private String githubNickname;
     private String realName;
 }

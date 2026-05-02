@@ -25,170 +25,180 @@
 
       <!-- Management Section -->
       <div *ngIf="isAuthenticated()" class="management-section">
-        <div class="add-mapping-form">
-          <h4><i class="fas fa-user-plus"></i> Asociar Nuevo Usuario</h4>
-          <div class="form-row">
-            <input
-              type="text"
-              [(ngModel)]="newNickname"
-              placeholder="Nickname de GitHub"
-              class="admin-input"
-            />
-            <input
-              type="text"
-              [(ngModel)]="newRealName"
-              placeholder="Nombre Real"
-              class="admin-input"
-            />
-            <button (click)="addMapping()" class="btn-add">
-              <i class="fas fa-plus"></i> Agregar
+        <!-- New Visual Mapping Assistant -->
+        <div class="mapping-assistant">
+          <h4><i class="fas fa-magic"></i> Asistente de Asociación</h4>
+          <p class="helper-text">Haga clic en un colaborador de GitHub y asócielo a su carpeta correspondiente.</p>
+
+          <div class="assistant-grid">
+            <!-- Collaborators list -->
+            <div class="collaborators-selector">
+              <h5>1. Seleccionar Colaborador</h5>
+              <div class="selector-scroll">
+                <div
+                  *ngFor="let c of contributors()"
+                  class="collaborator-item"
+                  [class.selected]="newNickname === c.login"
+                  (click)="selectCollaborator(c)"
+                >
+                  <img [src]="c.avatar_url" class="avatar-sm" [alt]="c.login">
+                  <span>{{ c.login }}</span>
+                  <i class="fas fa-check-circle" *ngIf="newNickname === c.login"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Folder & Name Form -->
+            <div class="mapping-form-compact">
+              <h5>2. Detalles de Asociación</h5>
+              <div class="form-group-compact">
+                <label>Carpeta del Repositorio</label>
+                <div class="select-wrapper">
+                  <select [(ngModel)]="newFolderName" class="admin-input">
+                    <option value="" disabled selected>Seleccione una carpeta...</option>
+                    <option *ngFor="let folder of repoFolders()" [value]="folder">
+                      {{ folder }} {{ isMapped(folder) ? '(Ya mapeada)' : '' }}
+                    </option>
+                  </select>
+                  <i class="fas fa-folder-open"></i>
+                </div>
+              </div>
+
+              <div class="form-group-compact">
+                <label>Nombre Real / Público</label>
+                <div class="input-wrapper">
+                  <input
+                    type="text"
+                    [(ngModel)]="newRealName"
+                    placeholder="Ej: Juan Pérez"
+                    class="admin-input"
+                  />
+                  <i class="fas fa-id-card"></i>
+                </div>
+              </div>
+
+              <button (click)="addMapping()" class="btn-add-full" [disabled]="!newFolderName || !newNickname || !newRealName">
+                <i class="fas fa-link"></i> Crear Asociación
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tablas de Colaboradores (para ver detalles) -->
+        <div class="mappings-list" style="margin-top: 1.5rem">
+          <div class="tabs-header">
+            <button
+              class="tab-btn"
+              [class.active]="activeAdminTab === 'mappings'"
+              (click)="activeAdminTab = 'mappings'"
+            >
+              <i class="fas fa-list-ul"></i> Mapeos Activos
+            </button>
+            <button
+              class="tab-btn"
+              [class.active]="activeAdminTab === 'github'"
+              (click)="activeAdminTab = 'github'"
+            >
+              <i class="fas fa-eye"></i> Visibilidad GitHub
             </button>
           </div>
-        </div>
 
-        <div class="mappings-list">
-          <h4><i class="fas fa-users"></i> Contribuidores Visibles</h4>
-          <div class="table-scroll">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Avatar</th>
-                  <th>GitHub Nickname</th>
-                  <th>Nombre Real</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let c of getVisibleContributors()" [class.mapped]="isMapped(c.login)">
-                  <td>
-                    <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login" />
-                  </td>
-                  <td>
-                    <strong>{{ c.login }}</strong>
-                  </td>
-                  <td>
-                    <span *ngIf="isMapped(c.login)" class="real-name-tag">
-                      {{ getRealName(c.login) }}
-                    </span>
-                    <span *ngIf="!isMapped(c.login)" class="pending-tag">Pendiente</span>
-                  </td>
-                  <td>
-                    <span class="status-badge" [class.status-ok]="isMapped(c.login)">
-                      {{ isMapped(c.login) ? 'Vinculado' : 'No vinculado' }}
-                    </span>
-                  </td>
-                  <td class="actions">
-                    <button
-                      (click)="goToProfile(c.login)"
-                      class="btn-icon btn-go"
-                      title="Ver Perfil"
-                    >
-                      <i class="fab fa-github"></i>
-                    </button>
-                    <button
-                      (click)="toggleHideContributor(c.login)"
-                      class="btn-icon btn-hide"
-                      title="Ocultar de Página Principal"
-                    >
-                      <i class="fas fa-eye-slash"></i>
-                    </button>
-                    <button
-                      *ngIf="!isMapped(c.login)"
-                      (click)="fillMapping(c.login)"
-                      class="btn-icon btn-add-small"
-                      title="Vincular Nombre"
-                    >
-                      <i class="fas fa-user-edit"></i>
-                    </button>
-                    <button
-                      *ngIf="isMapped(c.login)"
-                      (click)="removeMapping(c.login)"
-                      class="btn-icon btn-delete"
-                      title="Eliminar Vínculo"
-                    >
-                      <i class="fas fa-unlink"></i>
-                    </button>
-                  </td>
-                </tr>
-                <tr *ngIf="getVisibleContributors().length === 0">
-                  <td colspan="5" class="no-data">No hay contribuidores visibles o cargando...</td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="tab-content" *ngIf="activeAdminTab === 'mappings'">
+            <div class="table-scroll">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Colaborador</th>
+                    <th>Carpeta</th>
+                    <th>Nombre Real</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let mapping of mappings()" class="mapped">
+                    <td>
+                      <div class="user-cell">
+                        <img [src]="getAvatarUrl(mapping.githubNickname)" class="admin-avatar-sm" alt="">
+                        <strong>{{ mapping.githubNickname }}</strong>
+                      </div>
+                    </td>
+                    <td>
+                      <code class="folder-tag">{{ mapping.folderName }}</code>
+                    </td>
+                    <td>
+                      <span class="real-name-tag">{{ mapping.realName }}</span>
+                    </td>
+                    <td class="actions">
+                      <button
+                        (click)="goToProfile(mapping.githubNickname)"
+                        class="btn-icon btn-go"
+                        title="Ver Perfil"
+                      >
+                        <i class="fab fa-github"></i>
+                      </button>
+                      <button
+                        (click)="removeMapping(mapping.folderName)"
+                        class="btn-icon btn-delete"
+                        title="Eliminar Vínculo"
+                      >
+                        <i class="fas fa-unlink"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr *ngIf="mappings().length === 0">
+                    <td colspan="4" class="no-data">No hay mapeos registrados.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-        <div class="mappings-list" style="margin-top: 2rem">
-          <h4><i class="fas fa-eye-slash"></i> Contribuidores Ocultos</h4>
-          <div class="table-scroll">
-            <table class="admin-table hidden-table">
-              <thead>
-                <tr>
-                  <th>Avatar</th>
-                  <th>GitHub Nickname</th>
-                  <th>Nombre Real</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let c of getHiddenContributors()" [class.mapped]="isMapped(c.login)">
-                  <td>
-                    <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login" />
-                  </td>
-                  <td>
-                    <strong>{{ c.login }}</strong>
-                  </td>
-                  <td>
-                    <span *ngIf="isMapped(c.login)" class="real-name-tag">
-                      {{ getRealName(c.login) }}
-                    </span>
-                    <span *ngIf="!isMapped(c.login)" class="pending-tag">Pendiente</span>
-                  </td>
-                  <td>
-                    <span class="status-badge" [class.status-ok]="isMapped(c.login)">
-                      {{ isMapped(c.login) ? 'Vinculado' : 'No vinculado' }}
-                    </span>
-                  </td>
-                  <td class="actions">
-                    <button
-                      (click)="goToProfile(c.login)"
-                      class="btn-icon btn-go"
-                      title="Ver Perfil"
-                    >
-                      <i class="fab fa-github"></i>
-                    </button>
-                    <button
-                      (click)="toggleHideContributor(c.login)"
-                      class="btn-icon btn-show"
-                      title="Mostrar en Página Principal"
-                    >
-                      <i class="fas fa-eye"></i>
-                    </button>
-                    <button
-                      *ngIf="!isMapped(c.login)"
-                      (click)="fillMapping(c.login)"
-                      class="btn-icon btn-add-small"
-                      title="Vincular Nombre"
-                    >
-                      <i class="fas fa-user-edit"></i>
-                    </button>
-                    <button
-                      *ngIf="isMapped(c.login)"
-                      (click)="removeMapping(c.login)"
-                      class="btn-icon btn-delete"
-                      title="Eliminar Vínculo"
-                    >
-                      <i class="fas fa-unlink"></i>
-                    </button>
-                  </td>
-                </tr>
-                <tr *ngIf="getHiddenContributors().length === 0">
-                  <td colspan="5" class="no-data">No hay contribuidores ocultos.</td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="tab-content" *ngIf="activeAdminTab === 'github'">
+            <div class="table-scroll">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Avatar</th>
+                    <th>GitHub Nickname</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let c of contributors()" [class.hidden-row]="isHidden(c.login)">
+                    <td>
+                      <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login" />
+                    </td>
+                    <td>
+                      <strong>{{ c.login }}</strong>
+                    </td>
+                    <td>
+                      <span class="status-badge" [class.status-ok]="!isHidden(c.login)">
+                        {{ isHidden(c.login) ? 'Oculto' : 'Visible' }}
+                      </span>
+                    </td>
+                    <td class="actions">
+                      <button
+                        (click)="goToProfile(c.login)"
+                        class="btn-icon btn-go"
+                        title="Ver Perfil"
+                      >
+                        <i class="fab fa-github"></i>
+                      </button>
+                      <button
+                        (click)="toggleHideContributor(c.login)"
+                        class="btn-icon"
+                        [class.btn-hide]="!isHidden(c.login)"
+                        [class.btn-show]="isHidden(c.login)"
+                        [title]="isHidden(c.login) ? 'Mostrar' : 'Ocultar'"
+                      >
+                        <i class="fas" [ngClass]="isHidden(c.login) ? 'fa-eye' : 'fa-eye-slash'"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

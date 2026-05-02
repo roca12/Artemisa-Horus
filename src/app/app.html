@@ -90,9 +90,9 @@
 
             <h4><i class="fas fa-users"></i> Autores</h4>
             <ul class="author-list">
-              <li *ngFor="let author of getAuthorKeys(selectedW.authors)">
+                  <li *ngFor="let author of getAuthorKeys(selectedW.authors)">
                 <span class="author-name" [title]="author"
-                  ><i class="fas fa-user"></i> {{ getDisplayName(author) }}:</span
+                  ><i class="fas fa-user"></i> {{ getAuthorDisplayName(author) }}:</span
                 >
                 <span class="author-count">{{ selectedW.authors[author] }} commits</span>
               </li>

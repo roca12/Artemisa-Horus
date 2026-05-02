@@ -135,7 +135,16 @@ export class App implements OnInit, OnDestroy {
   /** Indicates if the admin panel is shown. */
   showAdmin = false;
 
+  /** Mapping of folder names to real names. */
+  folderToRealName: { [folderName: string]: string } = {};
+
+  /** Mapping of folder names to github nicknames. */
+  folderToGithub: { [folderName: string]: string } = {};
+
   /** Mapping of GitHub nicknames to real names. */
+  githubToReal: { [nickname: string]: string } = {};
+
+  /** Mapping of GitHub nicknames to real names (backend format). */
   userMappings: { [nickname: string]: string } = {};
 
   /** List of hidden contributor logins. */
@@ -262,12 +271,21 @@ export class App implements OnInit, OnDestroy {
   }
 
   /**
-   * Gets the display name for a contributor.
+   * Gets the display name for a contributor (folder owner).
+   * @param login The folder name.
+   * @returns The display name (real name or folder name).
+   */
+  getDisplayName(login: string): string {
+    return this.folderToRealName[login.toLowerCase()] || login;
+  }
+
+  /**
+   * Gets the display name for a contributor (GitHub login).
    * @param login The GitHub login.
    * @returns The display name (real name or login).
    */
-  getDisplayName(login: string): string {
-    return this.userMappings[login.toLowerCase()] || login;
+  getAuthorDisplayName(login: string): string {
+    return this.githubToReal[login.toLowerCase()] || login;
   }
 
   /**
@@ -322,11 +340,19 @@ export class App implements OnInit, OnDestroy {
     }).subscribe({
       next: (config) => {
         // Actualizar mapeos
-        const mappingsObj: { [nickname: string]: string } = {};
+        const realNames: { [folder: string]: string } = {};
+        const githubNicknames: { [folder: string]: string } = {};
+        const gitToReal: { [nickname: string]: string } = {};
         config.mappings.forEach((mapping) => {
-          mappingsObj[mapping.githubNickname.toLowerCase()] = mapping.realName;
+          const folderLower = mapping.folderName.toLowerCase();
+          const gitLower = mapping.githubNickname.toLowerCase();
+          realNames[folderLower] = mapping.realName;
+          githubNicknames[folderLower] = mapping.githubNickname;
+          gitToReal[gitLower] = mapping.realName;
         });
-        this.userMappings = mappingsObj;
+        this.folderToRealName = realNames;
+        this.folderToGithub = githubNicknames;
+        this.githubToReal = gitToReal;
 
         // Actualizar ocultos
         this.hiddenContributors = config.hidden.map((h) => h.githubNickname);
@@ -502,6 +528,9 @@ export class App implements OnInit, OnDestroy {
       // Omitir excluidos, copilot y otros bots
       if (excludedLogins.includes(author) || (author && author.toLowerCase().includes('copilot')))
         return;
+
+      // Usar nombre real si está mapeado directamente por el autor del commit
+      const displayName = this.githubToReal[author.toLowerCase()] || author;
 
       weeks[weekKey].commitsCount++;
       weeks[weekKey].authors[author] = (weeks[weekKey].authors[author] || 0) + 1;
@@ -813,20 +842,23 @@ export class App implements OnInit, OnDestroy {
         }
 
         // Buscar avatar en los commits o en la lista de contribuidores
+        const githubNickname = this.folderToGithub[login.toLowerCase()];
+        const lookupName = githubNickname || login;
+
         const contributorCommit = commits.find(
-          (c) => (c.author?.login || c.commit.author.name) === login,
+          (c) => (c.author?.login || c.commit.author.name) === lookupName,
         );
         let avatarUrl = contributorCommit?.author?.avatar_url;
 
         if (!avatarUrl) {
-          const gitHubUser = allGitHubContributors.find((u) => u.login === login);
+          const gitHubUser = allGitHubContributors.find((u) => u.login === lookupName);
           avatarUrl = gitHubUser?.avatar_url;
         }
 
         const finalDebt = accumulatedDebt;
 
         return {
-          login,
+          login, // Sigue siendo el nombre de la carpeta
           avatarUrl,
           totalFiles: totalDelivered,
           weeklyStats,

@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserMappingDTO {
+    private String folderName;
     private String githubNickname;
     private String realName;
 }
