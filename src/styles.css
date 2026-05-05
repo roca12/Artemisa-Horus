@@ -1613,3 +1613,47 @@ body.dark-theme .github-profile-btn:hover {
     gap: 10px;
   }
 }
+
+/* Weekly tracking table styles */
+.goal-met {
+  background-color: rgba(39, 174, 96, 0.08);
+}
+
+.goal-not-met {
+  background-color: rgba(231, 76, 60, 0.08);
+}
+
+.debt-value {
+  color: #e74c3c;
+  font-weight: 700;
+}
+
+.no-debt-value {
+  color: #27ae60;
+  font-weight: 700;
+}
+
+.status-ok {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.status-behind {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.unmapped-icon {
+  color: #f39c12;
+  margin-left: 6px;
+  font-size: 0.9em;
+  cursor: help;
+}
+
+.dark-theme .goal-met {
+  background-color: rgba(39, 174, 96, 0.15);
+}
+
+.dark-theme .goal-not-met {
+  background-color: rgba(231, 76, 60, 0.15);
+}

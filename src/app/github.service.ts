@@ -45,6 +45,22 @@ export interface GithubCollaborator {
   };
 }
 
+export interface GithubTreeItem {
+  path: string;
+  mode: string;
+  type: string;
+  sha: string;
+  size?: number;
+  url: string;
+}
+
+export interface GithubTree {
+  sha: string;
+  url: string;
+  tree: GithubTreeItem[];
+  truncated: boolean;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -149,6 +165,13 @@ export class GithubService {
   getCollaborators(): Observable<GithubCollaborator[]> {
     return this.http.get<GithubCollaborator[]>(
       `${this.baseUrl}/${this.owner}/${this.repo}/collaborators`,
+      this.getHeaders(),
+    );
+  }
+
+  getRepoTree(branch = 'main'): Observable<GithubTree> {
+    return this.http.get<GithubTree>(
+      `${this.baseUrl}/${this.owner}/${this.repo}/git/trees/${branch}?recursive=1`,
       this.getHeaders(),
     );
   }
