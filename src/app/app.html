@@ -39,12 +39,7 @@
 
   <div *ngIf="loading" class="loading-container">
     <div class="spinner"></div>
-    <p>
-      <i class="fas fa-sync fa-spin"></i> Cargando datos del repositorio... {{ loadingProgress }}%
-    </p>
-    <div class="progress-bar-container">
-      <div class="progress-bar" [style.width.%]="loadingProgress"></div>
-    </div>
+    <p><i class="fas fa-sync fa-spin"></i> Cargando datos del repositorio...</p>
     <small>Consultando API de GitHub...</small>
   </div>
 
@@ -54,638 +49,79 @@
   </div>
 
   <div *ngIf="!loading && !error">
-    <section *ngIf="commitsByWeek.length > 0; else noCommits">
-      <div class="section-header-with-action">
-        <h2>Commits por Semana</h2>
-        <button (click)="toggleCommitsHelpModal()" class="help-btn" title="¿Qué es un commit?">
-          <i class="fas fa-question-circle"></i> Ayuda
-        </button>
-      </div>
-
-      <div class="tabs-container">
-        <div class="tabs-header">
-          <button
-            *ngFor="let week of commitsByWeek"
-            [class.active]="selectedWeek === week.weekStart.toISOString().split('T')[0]"
-            (click)="selectWeek(week.weekStart.toISOString().split('T')[0])"
-            class="tab-btn"
-          >
-            <i class="fas fa-calendar-day"></i> {{ week.weekStart | date: 'dd/MM/yyyy' }}
-            <span class="badge">{{ week.commitsCount }}</span>
-          </button>
-        </div>
-
-        <div class="tab-content" *ngIf="getSelectedWeekStats() as selectedW">
-          <div class="week-detail-card">
-            <h3>
-              <i class="fas fa-info-circle"></i> Detalles de la Semana
-              {{ selectedW.weekStart | date: 'dd/MM/yyyy' }}
-            </h3>
-            <div class="stats-summary">
-              <div class="stat-item">
-                <span class="stat-label">Total Commits:</span>
-                <span class="stat-value">{{ selectedW.commitsCount }}</span>
-              </div>
-            </div>
-
-            <h4><i class="fas fa-users"></i> Autores</h4>
-            <ul class="author-list">
-              <li *ngFor="let author of getAuthorKeys(selectedW.authors)">
-                <span class="author-name" [title]="author"
-                  ><i class="fas fa-user"></i> {{ getAuthorDisplayName(author) }}:</span
-                >
-                <span class="author-count">{{ selectedW.authors[author] }} commits</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-    <ng-template #noCommits>
-      <section>
-        <h2>Commits por Semana</h2>
-        <p class="no-data">
-          <i class="fas fa-info-circle"></i> No se encontraron commits desde el 20/04/2026.
-        </p>
-      </section>
-    </ng-template>
-
-    <section *ngIf="contributorsInFolder.length > 0; else noContributors">
-      <div class="section-header-with-action">
-        <h2>Actividad por Competidor</h2>
-        <button (click)="toggleHelpModal()" class="help-btn" title="¿Cómo interpretar los datos?">
-          <i class="fas fa-question-circle"></i> Ayuda
-        </button>
-      </div>
+    <section>
+      <h2><i class="fas fa-calendar-week"></i> Seguimiento Semanal de Ejercicios</h2>
       <p class="section-subtitle">
-        <i class="fas fa-mouse-pointer"></i> Haz clic en las tarjetas para ver los detalles de cada
-        competidor.
+        <strong>Semana {{ currentWeekNumber }}</strong> (desde el 20 de abril de 2026).
+        Cada semana se requieren <strong>{{ EXERCISES_PER_WEEK }}</strong> ejercicios nuevos.
+        Acumulado requerido: <strong>{{ totalRequiredExercises }}</strong> ejercicios.
+        Total general: <strong>{{ totalFiles }}</strong> archivos en
+        <strong>{{ folderFileCounts.length }}</strong> carpetas.
       </p>
 
-      <div class="competitors-split">
-        <div class="competitors-column">
-          <h3 class="text-success"><i class="fas fa-check-circle"></i> Cumplen Meta</h3>
-          <div class="contributor-grid">
-            <div
-              *ngFor="let contributor of getFullyPassedContributors()"
-              [class.active]="selectedContributor === contributor.login"
-              (click)="selectContributor(contributor.login)"
-              class="contributor-card"
-            >
-              <img
-                *ngIf="contributor.avatarUrl"
-                [src]="contributor.avatarUrl"
-                class="card-avatar"
-                [alt]="contributor.login"
-              />
-              <i *ngIf="!contributor.avatarUrl" class="fas fa-user-circle"></i>
-              <div class="card-info">
-                <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
-                <span class="card-stats">{{ contributor.totalFiles }} ejercicios</span>
-                <span class="doc-stats">
-                  <i class="fas fa-file-signature text-success" title="Documentados"></i>
-                  {{ contributor.totalDocumented }}
+      <div class="table-container" *ngIf="folderFileCounts.length > 0">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th><i class="fas fa-user"></i> Competidor</th>
+              <th><i class="fas fa-folder"></i> Carpeta</th>
+              <th><i class="fas fa-file-code"></i> Archivos</th>
+              <th><i class="fas fa-bullseye"></i> Requeridos</th>
+              <th><i class="fas fa-exclamation-circle"></i> Faltan</th>
+              <th><i class="fas fa-check-circle"></i> Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let folder of folderFileCounts; let i = index"
+                [class.goal-met]="folder.isGoalMet"
+                [class.goal-not-met]="!folder.isGoalMet">
+              <td class="col-num">{{ i + 1 }}</td>
+              <td class="competitor-cell">
+                <img *ngIf="folder.isMapped && folder.githubUsername"
+                     [src]="'https://github.com/' + folder.githubUsername + '.png?size=32'"
+                     [alt]="folder.displayName"
+                     class="competitor-avatar" />
+                <strong>{{ folder.displayName }}</strong>
+                <a *ngIf="folder.isMapped && folder.githubUsername"
+                   [href]="'https://github.com/' + folder.githubUsername"
+                   target="_blank"
+                   class="github-link"
+                   [title]="'Ver perfil de ' + folder.githubUsername + ' en GitHub'">
+                  <i class="fab fa-github"></i>
+                </a>
+                <span *ngIf="!folder.isMapped" class="unmapped-icon" title="Carpeta sin mapear. El coach debe actualizar el mapeo en el panel de administración.">
+                  <i class="fas fa-exclamation-triangle"></i>
                 </span>
-              </div>
-              <a
-                *ngIf="getGithubLink(contributor) as githubLogin"
-                [href]="'https://github.com/' + githubLogin"
-                target="_blank"
-                class="github-profile-btn"
-                (click)="$event.stopPropagation()"
-                title="Ver perfil de GitHub"
-              >
-                <i class="fab fa-github"></i>
-              </a>
-              <span
-                *ngIf="!getGithubLink(contributor)"
-                class="mapping-warning"
-                title="Falta mapeo por parte del coach"
-                (click)="$event.stopPropagation()"
-              >
-                <i class="fas fa-exclamation-triangle"></i>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="competitors-column">
-          <h3 class="text-warning">
-            <i class="fas fa-exclamation-circle"></i> Cumplen Meta (Falta Doc.)
-          </h3>
-          <div class="contributor-grid">
-            <div
-              *ngFor="let contributor of getPassedWithMissingDocContributors()"
-              [class.active]="selectedContributor === contributor.login"
-              (click)="selectContributor(contributor.login)"
-              class="contributor-card warning"
-            >
-              <img
-                *ngIf="contributor.avatarUrl"
-                [src]="contributor.avatarUrl"
-                class="card-avatar"
-                [alt]="contributor.login"
-              />
-              <i *ngIf="!contributor.avatarUrl" class="fas fa-user-circle"></i>
-              <div class="card-info">
-                <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
-                <span class="card-stats">{{ contributor.totalFiles }} ejercicios</span>
-                <span class="doc-stats">
-                  <i class="fas fa-file-signature text-success" title="Documentados"></i>
-                  {{ contributor.totalDocumented }}
-                  <i class="fas fa-file-excel text-danger" title="No documentados"></i>
-                  {{ contributor.totalUndocumented }}
+              </td>
+              <td>{{ folder.folderName }}</td>
+              <td><span class="stat-value">{{ folder.fileCount }}</span></td>
+              <td>{{ folder.requiredExercises }}</td>
+              <td>
+                <span *ngIf="folder.missingExercises > 0" class="debt-value">
+                  -{{ folder.missingExercises }}
                 </span>
-              </div>
-              <a
-                *ngIf="getGithubLink(contributor) as githubLogin"
-                [href]="'https://github.com/' + githubLogin"
-                target="_blank"
-                class="github-profile-btn"
-                (click)="$event.stopPropagation()"
-                title="Ver perfil de GitHub"
-              >
-                <i class="fab fa-github"></i>
-              </a>
-              <span
-                *ngIf="!getGithubLink(contributor)"
-                class="mapping-warning"
-                title="Falta mapeo por parte del coach"
-                (click)="$event.stopPropagation()"
-              >
-                <i class="fas fa-exclamation-triangle"></i>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="competitors-column">
-          <h3 class="text-danger"><i class="fas fa-times-circle"></i> Pendientes / Deuda</h3>
-          <div class="contributor-grid">
-            <div
-              *ngFor="let contributor of getFailedContributors()"
-              [class.active]="selectedContributor === contributor.login"
-              (click)="selectContributor(contributor.login)"
-              class="contributor-card failed"
-            >
-              <img
-                *ngIf="contributor.avatarUrl"
-                [src]="contributor.avatarUrl"
-                class="card-avatar"
-                [alt]="contributor.login"
-              />
-              <i *ngIf="!contributor.avatarUrl" class="fas fa-user-circle"></i>
-              <div class="card-info">
-                <span class="card-name">{{ getDisplayName(contributor.login) }}</span>
-                <span class="card-debt" [ngClass]="getDebtClass(contributor.totalDebt)">
-                  Debe: {{ contributor.totalDebt }} ejercicios
+                <span *ngIf="folder.missingExercises === 0" class="no-debt-value">0</span>
+              </td>
+              <td>
+                <span *ngIf="folder.isGoalMet" class="status-ok">
+                  <i class="fas fa-check-circle"></i> Al día
                 </span>
-                <span class="doc-stats">
-                  <i class="fas fa-file-signature text-success" title="Documentados"></i>
-                  {{ contributor.totalDocumented }}
-                  <i class="fas fa-file-excel text-danger" title="No documentados"></i>
-                  {{ contributor.totalUndocumented }}
+                <span *ngIf="!folder.isGoalMet" class="status-behind">
+                  <i class="fas fa-times-circle"></i> Debe
                 </span>
-              </div>
-              <a
-                *ngIf="getGithubLink(contributor) as githubLogin"
-                [href]="'https://github.com/' + githubLogin"
-                target="_blank"
-                class="github-profile-btn"
-                (click)="$event.stopPropagation()"
-                title="Ver perfil de GitHub"
-              >
-                <i class="fab fa-github"></i>
-              </a>
-              <span
-                *ngIf="!getGithubLink(contributor)"
-                class="mapping-warning"
-                title="Falta mapeo por parte del coach"
-                (click)="$event.stopPropagation()"
-              >
-                <i class="fas fa-exclamation-triangle"></i>
-              </span>
-            </div>
-          </div>
-        </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <div class="tabs-container" style="margin-top: 2rem">
-        <div class="tab-content" *ngIf="getSelectedContributorStats() as selected">
-          <div class="stats-header">
-            <h3>
-              <img
-                *ngIf="selected.avatarUrl"
-                [src]="selected.avatarUrl"
-                class="header-avatar"
-                [alt]="selected.login"
-              />
-              <i *ngIf="!selected.avatarUrl" class="fas fa-user-circle"></i>
-              Estadísticas de {{ getDisplayName(selected.login) }}
-              <span class="nickname-hint" *ngIf="userMappings[selected.login.toLowerCase()]"
-                >({{ selected.login }})</span
-              >
-              <a
-                *ngIf="getGithubLink(selected) as githubLogin"
-                [href]="'https://github.com/' + githubLogin"
-                target="_blank"
-                class="github-link-btn"
-                title="Ver perfil de GitHub"
-              >
-                <i class="fab fa-github"></i>
-              </a>
-              <span
-                *ngIf="!getGithubLink(selected)"
-                class="mapping-warning-inline"
-                title="Falta mapeo por parte del coach"
-              >
-                <i class="fas fa-exclamation-triangle"></i> Falta mapeo
-              </span>
-            </h3>
-            <p>
-              Total de archivos/aportes desde el 20/04/2026:
-              <strong>{{ selected.totalFiles }}</strong>
-            </p>
-          </div>
-
-          <div class="table-controls">
-            <div class="search-box">
-              <i class="fas fa-search"></i>
-              <input
-                type="text"
-                [(ngModel)]="searchTerm"
-                placeholder="Buscar en archivos o commits..."
-              />
-            </div>
-            <div class="filter-box">
-              <label><i class="fas fa-filter"></i> Estado:</label>
-              <select [(ngModel)]="statusFilter">
-                <option value="all">Todos</option>
-                <option value="met">Meta Cumplida</option>
-                <option value="missing_doc">Falta Documentación</option>
-                <option value="failed">Pendientes</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="table-container" id="stats-table">
-            <table>
-              <thead>
-                <tr>
-                  <th class="col-num">#</th>
-                  <th><i class="fas fa-calendar"></i> Semana</th>
-                  <th><i class="fas fa-check-double"></i> Estado</th>
-                  <th><i class="fas fa-file-code"></i> Nuevos Aportes</th>
-                  <th><i class="fas fa-file-signature"></i> Doc.</th>
-                  <th><i class="fas fa-exclamation-circle"></i> Deuda</th>
-                  <th><i class="fas fa-list-ul"></i> Actividad</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let week of getPaginatedWeeklyStats(); let i = index">
-                  <td class="col-num">{{ (currentPage - 1) * pageSize + i + 1 }}</td>
-                  <td>
-                    <strong>{{ week.weekStart | date: 'dd/MM/yyyy' }}</strong>
-                  </td>
-                  <td>
-                    <span
-                      *ngIf="week.isGoalMet && week.undocumentedCount === 0"
-                      class="status-icon success"
-                      title="Meta cumplida"
-                    >
-                      <i class="fas fa-check-circle"></i>
-                    </span>
-                    <span
-                      *ngIf="week.isGoalMet && week.undocumentedCount > 0"
-                      class="status-icon warning"
-                      title="Meta cumplida pero falta documentación"
-                    >
-                      <i class="fas fa-exclamation-circle"></i>
-                    </span>
-                    <span
-                      *ngIf="!week.isGoalMet"
-                      class="status-icon danger"
-                      title="Meta no cumplida"
-                    >
-                      <i class="fas fa-times-circle"></i>
-                    </span>
-                  </td>
-                  <td>{{ week.count }} archivos</td>
-                  <td>
-                    <span class="text-success" title="Correcto">
-                      <i class="fas fa-check"></i> {{ week.documentedCount }}
-                    </span>
-                    /
-                    <span class="text-danger" title="Incorrecto">
-                      <i class="fas fa-times"></i> {{ week.undocumentedCount }}
-                    </span>
-                  </td>
-                  <td>
-                    <span [ngClass]="getDebtClass(week.debt)">
-                      {{ week.debt > 0 ? week.debt + ' ejercicios' : '-' }}
-                    </span>
-                  </td>
-                  <td>
-                    <div class="activity-details">
-                      <details *ngIf="week.files.length > 0">
-                        <summary>
-                          <strong
-                            ><i class="fas fa-files"></i> Archivos ({{ week.files.length }})</strong
-                          >
-                        </summary>
-                        <ul class="file-list">
-                          <li
-                            *ngFor="let file of week.documentedFiles"
-                            class="file-item documented"
-                            title="Correctamente documentado"
-                          >
-                            <i class="fas fa-file-signature text-success"></i>
-                            <span class="file-name">{{ file }}</span>
-                            <button
-                              class="view-code-btn"
-                              (click)="viewFileCode(file)"
-                              title="Ver código"
-                            >
-                              <i class="fas fa-eye"></i>
-                            </button>
-                          </li>
-                          <li
-                            *ngFor="let file of week.undocumentedFiles"
-                            class="file-item undocumented"
-                            title="Sin documentación estándar"
-                          >
-                            <i class="fas fa-file-excel text-danger"></i>
-                            <span class="file-name">{{ file }}</span>
-                            <button
-                              class="view-code-btn"
-                              (click)="viewFileCode(file)"
-                              title="Ver código"
-                            >
-                              <i class="fas fa-eye"></i>
-                            </button>
-                          </li>
-                        </ul>
-                      </details>
-
-                      <details *ngIf="week.messages.length > 0">
-                        <summary>
-                          <strong
-                            ><i class="fas fa-code-commit"></i> Commits ({{
-                              week.messages.length
-                            }})</strong
-                          >
-                        </summary>
-                        <ul class="activity-list">
-                          <li *ngFor="let msg of week.messages">
-                            <i class="fas fa-comment-alt"></i> {{ msg }}
-                          </li>
-                        </ul>
-                      </details>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Paginación -->
-          <div class="pagination-container" *ngIf="getTotalPages() > 1">
-            <button
-              class="pagination-btn"
-              [disabled]="currentPage === 1"
-              (click)="goToPage(currentPage - 1)"
-              title="Anterior"
-            >
-              <i class="fas fa-chevron-left"></i>
-            </button>
-
-            <span class="pagination-info">
-              Página <strong>{{ currentPage }}</strong> de <strong>{{ getTotalPages() }}</strong>
-            </span>
-
-            <button
-              class="pagination-btn"
-              [disabled]="currentPage === getTotalPages()"
-              (click)="goToPage(currentPage + 1)"
-              title="Siguiente"
-            >
-              <i class="fas fa-chevron-right"></i>
-            </button>
-          </div>
-
-          <!-- Estándar de Documentación -->
-          <div class="documentation-standard-card">
-            <h4><i class="fas fa-file-invoice"></i> Estándar de Documentación</h4>
-            <p>Para que un ejercicio sea contabilizado como documentado, debe incluir al inicio:</p>
-
-            <div class="doc-examples">
-              <div class="doc-example">
-                <h5><i class="fab fa-java"></i> Java / <i class="fas fa-code"></i> C++</h5>
-                <pre>
-/*
- * Autor: [Nombre]
- * Problema: [Nombre del Problema]
- * Juez online: [Nombre del Juez]
- * Veredicto: Accepted / Correct / Yes / Ok
- * URL: [Link al problema]
- */</pre
-                >
-              </div>
-              <div class="doc-example">
-                <h5><i class="fab fa-python"></i> Python</h5>
-                <pre>
-# Autor: [Nombre]
-# Problema: [Nombre del Problema]
-# Juez online: [Nombre del Juez]
-# Veredicto: Accepted / Correct / Yes / Ok
-# URL: [Link al problema]</pre
-                >
-              </div>
-            </div>
-
-            <small
-              >* Veredicto debe ser <strong>Accepted</strong>, <strong>Correct</strong>,
-              <strong>Yes</strong> o <strong>Ok</strong>.</small
-            >
-          </div>
-        </div>
-      </div>
+      <p *ngIf="folderFileCounts.length === 0" class="no-data">
+        <i class="fas fa-info-circle"></i> No se encontraron carpetas de competidores.
+      </p>
     </section>
-    <ng-template #noContributors>
-      <section>
-        <h2>Colaboradores</h2>
-        <p class="no-data">
-          <i class="fas fa-info-circle"></i> No hay aportes registrados en esta carpeta desde el
-          20/04/2026.
-        </p>
-      </section>
-    </ng-template>
   </div>
 
-  <!-- Modal de Ayuda -->
-  <div class="modal-backdrop" *ngIf="showHelpModal" (click)="toggleHelpModal()">
-    <div class="modal-content help-modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3><i class="fas fa-question-circle"></i> Guía de Interpretación de Datos</h3>
-        <button class="close-btn" (click)="toggleHelpModal()">&times;</button>
-      </div>
-      <div class="modal-body help-body">
-        <section class="help-section">
-          <h4><i class="fas fa-id-card"></i> Tarjetas de Competidor</h4>
-          <p>Las tarjetas muestran un resumen rápido del estado actual del competidor:</p>
-          <ul>
-            <li>
-              <strong>Ejercicios:</strong> Cantidad total de archivos únicos (.java, .cpp, .py)
-              entregados.
-            </li>
-            <li>
-              <strong>Iconos de Documentación:</strong>
-              <span class="text-success"><i class="fas fa-file-signature"></i> N</span> indica
-              ejercicios correctamente documentados.
-              <span class="text-danger"><i class="fas fa-file-excel"></i> N</span> indica ejercicios
-              que no cumplen el estándar.
-            </li>
-            <li>
-              <strong>Deuda (Rojo):</strong> Cantidad de ejercicios que le faltan para estar al día
-              con la meta semanal (3 por semana).
-            </li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h4><i class="fas fa-table"></i> Tabla de Actividad</h4>
-          <p>Muestra el desglose detallado por cada semana:</p>
-          <ul>
-            <li>
-              <strong>Estado:</strong>
-              <span class="text-success"><i class="fas fa-check-circle"></i></span> Meta cumplida
-              (sin deuda), <span class="text-danger"><i class="fas fa-times-circle"></i></span> Meta
-              pendiente.
-            </li>
-            <li>
-              <strong>Doc.:</strong> Relación de ejercicios
-              <span class="text-success">Correctos</span> /
-              <span class="text-danger">Incorrectos</span> en esa semana específica.
-            </li>
-            <li>
-              <strong>Deuda:</strong> Ejercicios acumulados pendientes al finalizar esa semana.
-            </li>
-            <li>
-              <strong>Actividad:</strong> Despliegue para ver los nombres de los archivos y los
-              mensajes de los commits. Los archivos muestran iconos (<span class="text-success"
-                ><i class="fas fa-file-signature"></i
-              ></span>
-              o <span class="text-danger"><i class="fas fa-file-excel"></i></span>) indicando si
-              cumplen el estándar de documentación.
-            </li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h4><i class="fas fa-bullseye"></i> Reglas de la Meta</h4>
-          <p>
-            La meta es entregar <strong>3 ejercicios semanales</strong>. La deuda es acumulativa; si
-            una semana entregas 5, compensas 2 ejercicios de deuda de semanas anteriores.
-          </p>
-        </section>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-primary" (click)="toggleHelpModal()">Entendido</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal de Ayuda (Commits) -->
-  <div class="modal-backdrop" *ngIf="showCommitsHelpModal" (click)="toggleCommitsHelpModal()">
-    <div class="modal-content help-modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3><i class="fas fa-question-circle"></i> Guía de Commits y Entregas</h3>
-        <button class="close-btn" (click)="toggleCommitsHelpModal()">&times;</button>
-      </div>
-      <div class="modal-body help-body">
-        <section class="help-section">
-          <h4><i class="fas fa-code-commit"></i> ¿Qué es un Commit?</h4>
-          <p>
-            Un <strong>commit</strong> es como una "captura" o registro de los cambios que realizas
-            en el código del repositorio. Cada vez que guardas y envías tus avances a GitHub,
-            generas un commit.
-          </p>
-          <ul>
-            <li>Un commit puede contener uno o varios archivos.</li>
-            <li>No todos los archivos en un commit son necesariamente ejercicios resueltos.</li>
-            <li>Los mensajes de commit ayudan a entender qué se cambió en esa versión.</li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h4><i class="fas fa-equals"></i> Commit vs. Resueltos por Competidor</h4>
-          <p>
-            Es importante entender que un commit <strong>no es lo mismo</strong> que un ejercicio
-            resuelto:
-          </p>
-          <ul>
-            <li>
-              <strong>Commits por Semana:</strong> Cuenta cuántas veces has enviado cambios al
-              repositorio general, sin importar el contenido.
-            </li>
-            <li>
-              <strong>Resueltos por Competidor:</strong> Solo cuenta los archivos de código (.java,
-              .cpp, .py) que son ejercicios nuevos y únicos.
-            </li>
-          </ul>
-        </section>
-
-        <section class="help-section">
-          <h4><i class="fas fa-check-double"></i> Criterios de Aceptación</h4>
-          <p>
-            Para que un aporte sea contabilizado en la meta de "Resueltos por Competidor", debe
-            cumplir con:
-          </p>
-          <ul>
-            <li>Tener el estándar de documentación correcto al inicio del archivo.</li>
-            <li>
-              El campo <strong>Veredicto</strong> en la documentación debe ser explícitamente:
-              <strong>Accepted</strong>, <strong>Correct</strong>, <strong>Yes</strong> o
-              <strong>Ok</strong>.
-            </li>
-            <li>
-              Cualquier otro veredicto (como Wrong Answer, TLE, etc.) no sumará a la meta semanal.
-            </li>
-          </ul>
-        </section>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-primary" (click)="toggleCommitsHelpModal()">Entendido</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal para ver código -->
-  <div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3><i class="fas fa-file-code"></i> {{ selectedFileName }}</h3>
-        <button class="close-btn" (click)="closeModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div *ngIf="loadingCode" class="modal-loading">
-          <i class="fas fa-spinner fa-spin"></i> Cargando contenido...
-        </div>
-        <div #editorContainer class="editor-container" [hidden]="loadingCode"></div>
-      </div>
-      <div class="modal-footer">
-        <button
-          class="btn-download"
-          (click)="downloadFile()"
-          *ngIf="!loadingCode"
-          title="Descargar archivo"
-        >
-          <i class="fas fa-download"></i> Descargar
-        </button>
-        <button class="btn-secondary" (click)="closeModal()">Cerrar</button>
-      </div>
-    </div>
-  </div>
   <!-- Modal de Administración -->
   <app-admin
     *ngIf="showAdmin"
