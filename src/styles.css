@@ -1650,6 +1650,32 @@ body.dark-theme .github-profile-btn:hover {
   cursor: help;
 }
 
+.competitor-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.competitor-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.github-link {
+  color: var(--text-muted);
+  font-size: 1rem;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.github-link:hover {
+  color: var(--accent-color);
+}
+
 .dark-theme .goal-met {
   background-color: rgba(39, 174, 96, 0.15);
 }

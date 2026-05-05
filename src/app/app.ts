@@ -39,6 +39,7 @@ export interface FolderFileCount {
   missingExercises: number;
   isGoalMet: boolean;
   isMapped: boolean;
+  githubUsername: string;
 }
 
 /**
@@ -330,6 +331,7 @@ export class App implements OnInit, OnDestroy {
       .map(([folderName, fileCount]) => {
         const missing = Math.max(0, this.totalRequiredExercises - fileCount);
         const isMapped = !!this.folderToRealName[folderName.toLowerCase()];
+        const githubUsername = isMapped ? (this.folderToGithub[folderName.toLowerCase()] || '') : '';
         return {
           folderName,
           fileCount,
@@ -338,6 +340,7 @@ export class App implements OnInit, OnDestroy {
           missingExercises: missing,
           isGoalMet: missing === 0,
           isMapped,
+          githubUsername,
         };
       })
       .sort((a, b) => b.fileCount - a.fileCount);

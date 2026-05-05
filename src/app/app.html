@@ -77,8 +77,19 @@
                 [class.goal-met]="folder.isGoalMet"
                 [class.goal-not-met]="!folder.isGoalMet">
               <td class="col-num">{{ i + 1 }}</td>
-              <td>
+              <td class="competitor-cell">
+                <img *ngIf="folder.isMapped && folder.githubUsername"
+                     [src]="'https://github.com/' + folder.githubUsername + '.png?size=32'"
+                     [alt]="folder.displayName"
+                     class="competitor-avatar" />
                 <strong>{{ folder.displayName }}</strong>
+                <a *ngIf="folder.isMapped && folder.githubUsername"
+                   [href]="'https://github.com/' + folder.githubUsername"
+                   target="_blank"
+                   class="github-link"
+                   [title]="'Ver perfil de ' + folder.githubUsername + ' en GitHub'">
+                  <i class="fab fa-github"></i>
+                </a>
                 <span *ngIf="!folder.isMapped" class="unmapped-icon" title="Carpeta sin mapear. El coach debe actualizar el mapeo en el panel de administración.">
                   <i class="fas fa-exclamation-triangle"></i>
                 </span>
