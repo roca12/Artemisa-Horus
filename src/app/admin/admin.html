@@ -311,15 +311,19 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let c of contributorsInFolder; let i = index"
-                [class.report-row-ok]="c.isCurrentGoalMet"
-                [class.report-row-debt]="!c.isCurrentGoalMet">
+            <tr
+              *ngFor="let c of contributorsInFolder; let i = index"
+              [class.report-row-ok]="c.isCurrentGoalMet"
+              [class.report-row-debt]="!c.isCurrentGoalMet"
+            >
               <td class="col-num">{{ i + 1 }}</td>
               <td class="report-competitor-cell">
                 <img [src]="c.avatarUrl" class="report-avatar-sm" alt="" />
                 <span>{{ getDisplayName(c.login) }}</span>
               </td>
-              <td><code>{{ c.login }}</code></td>
+              <td>
+                <code>{{ c.login }}</code>
+              </td>
               <td>{{ c.totalFiles }}</td>
               <td>{{ c.totalFiles + c.totalDebt }}</td>
               <td>
