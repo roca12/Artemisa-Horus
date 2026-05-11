@@ -298,55 +298,41 @@
       </div>
 
       <div class="report-body">
-        <div class="report-section passed">
-          <h3 class="section-title"><i class="fas fa-check-circle"></i> Al Día (Cumplen Meta)</h3>
-          <div class="report-grid">
-            <div *ngFor="let c of fullyPassedContributors" class="report-card">
-              <img [src]="c.avatarUrl" class="report-avatar" alt="" />
-              <div class="report-info">
-                <span class="report-name">{{ getDisplayName(c.login) }}</span>
-                <span class="report-stat">{{ c.totalFiles }} ejercicios</span>
-              </div>
-            </div>
-            <div *ngIf="fullyPassedContributors.length === 0" class="report-empty">
-              No hay colaboradores al día.
-            </div>
-          </div>
-        </div>
-
-        <div class="report-section warning">
-          <h3 class="section-title">
-            <i class="fas fa-exclamation-circle"></i> Falta Documentación
-          </h3>
-          <div class="report-grid">
-            <div *ngFor="let c of passedWithMissingDocContributors" class="report-card warning">
-              <img [src]="c.avatarUrl" class="report-avatar" alt="" />
-              <div class="report-info">
-                <span class="report-name">{{ getDisplayName(c.login) }}</span>
-                <span class="report-stat warning">Pendientes: {{ c.totalUndocumented }} doc.</span>
-              </div>
-            </div>
-            <div *ngIf="passedWithMissingDocContributors.length === 0" class="report-empty">
-              No hay documentación pendiente.
-            </div>
-          </div>
-        </div>
-
-        <div class="report-section failed">
-          <h3 class="section-title"><i class="fas fa-times-circle"></i> En Deuda (Pendientes)</h3>
-          <div class="report-grid">
-            <div *ngFor="let c of failedContributors" class="report-card debt">
-              <img [src]="c.avatarUrl" class="report-avatar" alt="" />
-              <div class="report-info">
-                <span class="report-name">{{ getDisplayName(c.login) }}</span>
-                <span class="report-stat debt">Debe: {{ c.totalDebt }}</span>
-              </div>
-            </div>
-            <div *ngIf="failedContributors.length === 0" class="report-empty">
-              No hay colaboradores en deuda.
-            </div>
-          </div>
-        </div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th>Competidor</th>
+              <th>Carpeta</th>
+              <th>Archivos</th>
+              <th>Requeridos</th>
+              <th>Faltan</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of contributorsInFolder; let i = index"
+                [class.report-row-ok]="c.isCurrentGoalMet"
+                [class.report-row-debt]="!c.isCurrentGoalMet">
+              <td class="col-num">{{ i + 1 }}</td>
+              <td class="report-competitor-cell">
+                <img [src]="c.avatarUrl" class="report-avatar-sm" alt="" />
+                <span>{{ getDisplayName(c.login) }}</span>
+              </td>
+              <td><code>{{ c.login }}</code></td>
+              <td>{{ c.totalFiles }}</td>
+              <td>{{ c.totalFiles + c.totalDebt }}</td>
+              <td>
+                <span *ngIf="c.totalDebt > 0" class="report-debt-value">-{{ c.totalDebt }}</span>
+                <span *ngIf="c.totalDebt === 0" class="report-no-debt-value">0</span>
+              </td>
+              <td>
+                <span *ngIf="c.isCurrentGoalMet" class="report-status-ok">✓ Al día</span>
+                <span *ngIf="!c.isCurrentGoalMet" class="report-status-debt">✗ Debe</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div class="report-footer">Generado el {{ today | date: 'dd/MM/yyyy HH:mm' }}</div>

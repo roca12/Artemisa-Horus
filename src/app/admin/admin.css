@@ -663,6 +663,83 @@ body.dark-theme .btn-download:hover {
   border: 2px solid #3d3d3d;
 }
 
+/* Report Table Styles */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.report-table thead th {
+  background: #2a2a2a;
+  color: #3498db;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid #3d3d3d;
+  font-weight: 600;
+}
+
+.report-table tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #333;
+  color: #e0e0e0;
+}
+
+.report-table .col-num {
+  width: 40px;
+  text-align: center;
+  color: #888;
+}
+
+.report-table code {
+  background: #333;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #ccc;
+}
+
+.report-row-ok {
+  border-left: 3px solid #2ecc71;
+}
+
+.report-row-debt {
+  border-left: 3px solid #e74c3c;
+}
+
+.report-competitor-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-avatar-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #3d3d3d;
+}
+
+.report-debt-value {
+  color: #e74c3c;
+  font-weight: 700;
+}
+
+.report-no-debt-value {
+  color: #2ecc71;
+  font-weight: 600;
+}
+
+.report-status-ok {
+  color: #2ecc71;
+  font-weight: 600;
+}
+
+.report-status-debt {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
 .report-info {
   display: flex;
   flex-direction: column;
