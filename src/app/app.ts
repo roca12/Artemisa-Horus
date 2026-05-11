@@ -1,10 +1,4 @@
-import {
-  Component,
-  OnInit,
-  OnDestroy,
-  signal,
-  ChangeDetectorRef,
-} from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef } from '@angular/core';
 import { GithubService, GithubTree, GithubTreeItem } from './github.service';
 import { ConfigService, UserMapping, HiddenContributor } from './config.service';
 import { forkJoin, Subscription, interval } from 'rxjs';
@@ -331,7 +325,7 @@ export class App implements OnInit, OnDestroy {
       .map(([folderName, fileCount]) => {
         const missing = Math.max(0, this.totalRequiredExercises - fileCount);
         const isMapped = !!this.folderToRealName[folderName.toLowerCase()];
-        const githubUsername = isMapped ? (this.folderToGithub[folderName.toLowerCase()] || '') : '';
+        const githubUsername = isMapped ? this.folderToGithub[folderName.toLowerCase()] || '' : '';
         return {
           folderName,
           fileCount,
