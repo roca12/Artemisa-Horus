@@ -1,10 +1,4 @@
-import {
-  Component,
-  OnInit,
-  OnDestroy,
-  signal,
-  ChangeDetectorRef,
-} from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef } from '@angular/core';
 import { GithubService, GithubTree, GithubTreeItem } from './github.service';
 import { ConfigService, UserMapping, HiddenContributor } from './config.service';
 import { forkJoin, Subscription, interval } from 'rxjs';
@@ -331,7 +325,7 @@ export class App implements OnInit, OnDestroy {
       .map(([folderName, fileCount]) => {
         const missing = Math.max(0, this.totalRequiredExercises - fileCount);
         const isMapped = !!this.folderToRealName[folderName.toLowerCase()];
-        const githubUsername = isMapped ? (this.folderToGithub[folderName.toLowerCase()] || '') : '';
+        const githubUsername = isMapped ? this.folderToGithub[folderName.toLowerCase()] || '' : '';
         return {
           folderName,
           fileCount,
@@ -348,14 +342,18 @@ export class App implements OnInit, OnDestroy {
     this.totalFiles = this.folderFileCounts.reduce((sum, f) => sum + f.fileCount, 0);
 
     // Generar contributorsInFolder para compatibilidad con el admin panel
-    this.contributorsInFolder = this.folderFileCounts.map((f) => ({
-      login: f.folderName,
-      totalFiles: f.fileCount,
-      weeklyStats: [],
-      totalDebt: f.missingExercises,
-      isCurrentGoalMet: f.isGoalMet,
-      totalDocumented: 0,
-      totalUndocumented: 0,
-    }));
+    this.contributorsInFolder = this.folderFileCounts.map((f) => {
+      const githubNickname = this.folderToGithub[f.folderName.toLowerCase()] || f.folderName;
+      return {
+        login: f.folderName,
+        avatarUrl: `https://github.com/${githubNickname}.png`,
+        totalFiles: f.fileCount,
+        weeklyStats: [],
+        totalDebt: f.missingExercises,
+        isCurrentGoalMet: f.isGoalMet,
+        totalDocumented: 0,
+        totalUndocumented: 0,
+      };
+    });
   }
 }

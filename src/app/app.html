@@ -52,10 +52,10 @@
     <section>
       <h2><i class="fas fa-calendar-week"></i> Seguimiento Semanal de Ejercicios</h2>
       <p class="section-subtitle">
-        <strong>Semana {{ currentWeekNumber }}</strong> (desde el 20 de abril de 2026).
-        Cada semana se requieren <strong>{{ EXERCISES_PER_WEEK }}</strong> ejercicios nuevos.
-        Acumulado requerido: <strong>{{ totalRequiredExercises }}</strong> ejercicios.
-        Total general: <strong>{{ totalFiles }}</strong> archivos en
+        <strong>Semana {{ currentWeekNumber }}</strong> (desde el 20 de abril de 2026). Cada semana
+        se requieren <strong>{{ EXERCISES_PER_WEEK }}</strong> ejercicios nuevos. Acumulado
+        requerido: <strong>{{ totalRequiredExercises }}</strong> ejercicios. Total general:
+        <strong>{{ totalFiles }}</strong> archivos en
         <strong>{{ folderFileCounts.length }}</strong> carpetas.
       </p>
 
@@ -73,29 +73,41 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let folder of folderFileCounts; let i = index"
-                [class.goal-met]="folder.isGoalMet"
-                [class.goal-not-met]="!folder.isGoalMet">
+            <tr
+              *ngFor="let folder of folderFileCounts; let i = index"
+              [class.goal-met]="folder.isGoalMet"
+              [class.goal-not-met]="!folder.isGoalMet"
+            >
               <td class="col-num">{{ i + 1 }}</td>
               <td class="competitor-cell">
-                <img *ngIf="folder.isMapped && folder.githubUsername"
-                     [src]="'https://github.com/' + folder.githubUsername + '.png?size=32'"
-                     [alt]="folder.displayName"
-                     class="competitor-avatar" />
+                <img
+                  *ngIf="folder.isMapped && folder.githubUsername"
+                  [src]="'https://github.com/' + folder.githubUsername + '.png?size=32'"
+                  [alt]="folder.displayName"
+                  class="competitor-avatar"
+                />
                 <strong>{{ folder.displayName }}</strong>
-                <a *ngIf="folder.isMapped && folder.githubUsername"
-                   [href]="'https://github.com/' + folder.githubUsername"
-                   target="_blank"
-                   class="github-link"
-                   [title]="'Ver perfil de ' + folder.githubUsername + ' en GitHub'">
+                <a
+                  *ngIf="folder.isMapped && folder.githubUsername"
+                  [href]="'https://github.com/' + folder.githubUsername"
+                  target="_blank"
+                  class="github-link"
+                  [title]="'Ver perfil de ' + folder.githubUsername + ' en GitHub'"
+                >
                   <i class="fab fa-github"></i>
                 </a>
-                <span *ngIf="!folder.isMapped" class="unmapped-icon" title="Carpeta sin mapear. El coach debe actualizar el mapeo en el panel de administración.">
+                <span
+                  *ngIf="!folder.isMapped"
+                  class="unmapped-icon"
+                  title="Carpeta sin mapear. El coach debe actualizar el mapeo en el panel de administración."
+                >
                   <i class="fas fa-exclamation-triangle"></i>
                 </span>
               </td>
               <td>{{ folder.folderName }}</td>
-              <td><span class="stat-value">{{ folder.fileCount }}</span></td>
+              <td>
+                <span class="stat-value">{{ folder.fileCount }}</span>
+              </td>
               <td>{{ folder.requiredExercises }}</td>
               <td>
                 <span *ngIf="folder.missingExercises > 0" class="debt-value">
