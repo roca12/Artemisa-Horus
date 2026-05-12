@@ -59,69 +59,26 @@
         <strong>{{ folderFileCounts.length }}</strong> carpetas.
       </p>
 
-      <div class="table-controls" *ngIf="folderFileCounts.length > 0">
-        <div class="table-filter">
-          <i class="fas fa-search"></i>
-          <input
-            type="text"
-            [(ngModel)]="filterText"
-            (ngModelChange)="onFilterChange()"
-            placeholder="Buscar por nombre, carpeta o usuario..."
-            class="filter-input"
-          />
-        </div>
-        <div class="table-page-size">
-          <label for="pageSize">Mostrar:</label>
-          <select
-            id="pageSize"
-            [(ngModel)]="pageSize"
-            (ngModelChange)="onPageSizeChange()"
-            class="page-size-select"
-          >
-            <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option>
-          </select>
-          <span>por página</span>
-        </div>
-      </div>
-
       <div class="table-container" *ngIf="folderFileCounts.length > 0">
         <table>
           <thead>
             <tr>
               <th class="col-num">#</th>
-              <th class="sortable" (click)="sortBy('displayName')">
-                <i class="fas fa-user"></i> Competidor
-                <i class="fas" [ngClass]="getSortIcon('displayName')"></i>
-              </th>
-              <th class="sortable" (click)="sortBy('folderName')">
-                <i class="fas fa-folder"></i> Carpeta
-                <i class="fas" [ngClass]="getSortIcon('folderName')"></i>
-              </th>
-              <th class="sortable" (click)="sortBy('fileCount')">
-                <i class="fas fa-file-code"></i> Archivos
-                <i class="fas" [ngClass]="getSortIcon('fileCount')"></i>
-              </th>
-              <th class="sortable" (click)="sortBy('requiredExercises')">
-                <i class="fas fa-bullseye"></i> Requeridos
-                <i class="fas" [ngClass]="getSortIcon('requiredExercises')"></i>
-              </th>
-              <th class="sortable" (click)="sortBy('missingExercises')">
-                <i class="fas fa-exclamation-circle"></i> Faltan
-                <i class="fas" [ngClass]="getSortIcon('missingExercises')"></i>
-              </th>
-              <th class="sortable" (click)="sortBy('isGoalMet')">
-                <i class="fas fa-check-circle"></i> Estado
-                <i class="fas" [ngClass]="getSortIcon('isGoalMet')"></i>
-              </th>
+              <th><i class="fas fa-user"></i> Competidor</th>
+              <th><i class="fas fa-folder"></i> Carpeta</th>
+              <th><i class="fas fa-file-code"></i> Archivos</th>
+              <th><i class="fas fa-bullseye"></i> Requeridos</th>
+              <th><i class="fas fa-exclamation-circle"></i> Faltan</th>
+              <th><i class="fas fa-check-circle"></i> Estado</th>
             </tr>
           </thead>
           <tbody>
             <tr
-              *ngFor="let folder of paginatedFolderFileCounts; let i = index"
+              *ngFor="let folder of folderFileCounts; let i = index"
               [class.goal-met]="folder.isGoalMet"
               [class.goal-not-met]="!folder.isGoalMet"
             >
-              <td class="col-num">{{ pageOffset + i + 1 }}</td>
+              <td class="col-num">{{ i + 1 }}</td>
               <td class="competitor-cell">
                 <img
                   *ngIf="folder.isMapped && folder.githubUsername"
@@ -169,48 +126,6 @@
             </tr>
           </tbody>
         </table>
-      </div>
-
-      <div class="table-pagination" *ngIf="folderFileCounts.length > 0 && totalPages > 1">
-        <span class="pagination-info">
-          Mostrando {{ pageOffset + 1 }}–{{ pageOffset + paginatedFolderFileCounts.length }} de
-          {{ filteredFolderFileCounts.length }}
-        </span>
-        <div class="pagination-buttons">
-          <button
-            (click)="goToPage(1)"
-            [disabled]="currentPage === 1"
-            class="pagination-btn"
-            title="Primera página"
-          >
-            <i class="fas fa-angle-double-left"></i>
-          </button>
-          <button
-            (click)="goToPage(currentPage - 1)"
-            [disabled]="currentPage === 1"
-            class="pagination-btn"
-            title="Página anterior"
-          >
-            <i class="fas fa-angle-left"></i>
-          </button>
-          <span class="pagination-current">Página {{ currentPage }} de {{ totalPages }}</span>
-          <button
-            (click)="goToPage(currentPage + 1)"
-            [disabled]="currentPage === totalPages"
-            class="pagination-btn"
-            title="Página siguiente"
-          >
-            <i class="fas fa-angle-right"></i>
-          </button>
-          <button
-            (click)="goToPage(totalPages)"
-            [disabled]="currentPage === totalPages"
-            class="pagination-btn"
-            title="Última página"
-          >
-            <i class="fas fa-angle-double-right"></i>
-          </button>
-        </div>
       </div>
 
       <p *ngIf="folderFileCounts.length === 0" class="no-data">
