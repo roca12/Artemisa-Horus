@@ -370,46 +370,51 @@ export class App implements OnInit, OnDestroy {
    * Also fetches commits to determine weekly file additions for the cap logic.
    */
   private fetchTreeData() {
-    this.githubService.getRepoTree().pipe(
-      switchMap((tree: GithubTree) => {
-        // Obtener commits que afectan la carpeta Resueltos_por_competidor
-        return forkJoin({
-          tree: of(tree),
-          commits: this.githubService.getCommitsByPath('Resueltos_por_competidor').pipe(
-            catchError(() => of([] as GithubCommit[])),
-          ),
-        });
-      }),
-      switchMap(({ tree, commits }) => {
-        // Para cada commit, obtener el detalle con archivos
-        if (commits.length === 0) {
-          return of({ tree, commitDetails: [] as GithubCommit[] });
-        }
-        const detailRequests = commits.map((c) =>
-          this.githubService.getCommitDetail(c.sha).pipe(
-            catchError(() => of(null as unknown as GithubCommit)),
-          ),
-        );
-        return forkJoin(detailRequests).pipe(
-          switchMap((details) => of({
-            tree,
-            commitDetails: details.filter((d): d is GithubCommit => d !== null),
-          })),
-        );
-      }),
-    ).subscribe({
-      next: ({ tree, commitDetails }) => {
-        this.processTree(tree, commitDetails);
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Error al obtener el árbol del repositorio:', err);
-        this.error = 'Error al cargar datos del repositorio. Intente nuevamente.';
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-    });
+    this.githubService
+      .getRepoTree()
+      .pipe(
+        switchMap((tree: GithubTree) => {
+          // Obtener commits que afectan la carpeta Resueltos_por_competidor
+          return forkJoin({
+            tree: of(tree),
+            commits: this.githubService
+              .getCommitsByPath('Resueltos_por_competidor')
+              .pipe(catchError(() => of([] as GithubCommit[]))),
+          });
+        }),
+        switchMap(({ tree, commits }) => {
+          // Para cada commit, obtener el detalle con archivos
+          if (commits.length === 0) {
+            return of({ tree, commitDetails: [] as GithubCommit[] });
+          }
+          const detailRequests = commits.map((c) =>
+            this.githubService
+              .getCommitDetail(c.sha)
+              .pipe(catchError(() => of(null as unknown as GithubCommit))),
+          );
+          return forkJoin(detailRequests).pipe(
+            switchMap((details) =>
+              of({
+                tree,
+                commitDetails: details.filter((d): d is GithubCommit => d !== null),
+              }),
+            ),
+          );
+        }),
+      )
+      .subscribe({
+        next: ({ tree, commitDetails }) => {
+          this.processTree(tree, commitDetails);
+          this.loading = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error al obtener el árbol del repositorio:', err);
+          this.error = 'Error al cargar datos del repositorio. Intente nuevamente.';
+          this.loading = false;
+          this.cdr.detectChanges();
+        },
+      });
   }
 
   /**
@@ -453,7 +458,9 @@ export class App implements OnInit, OnDestroy {
    * Builds a map of folder -> week -> number of files added, based on commit details.
    * Only counts files under "Resueltos_por_competidor/".
    */
-  private buildWeeklyFileCounts(commitDetails: GithubCommit[]): { [folder: string]: { [week: number]: number } } {
+  private buildWeeklyFileCounts(commitDetails: GithubCommit[]): {
+    [folder: string]: { [week: number]: number };
+  } {
     const prefix = 'Resueltos_por_competidor/';
     const weeklyMap: { [folder: string]: { [week: number]: number } } = {};
 
