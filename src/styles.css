@@ -690,6 +690,120 @@ section h2 {
   color: var(--accent-color);
 }
 
+/* Table controls: filter + page size */
+.table-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.table-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
+  color: var(--text-muted);
+}
+
+.filter-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-background);
+  color: var(--text-color);
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.table-page-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.page-size-select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-background);
+  color: var(--text-color);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.page-size-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+/* Sortable column headers */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+th.sortable:hover {
+  background-color: rgba(52, 152, 219, 0.08);
+}
+
+th.sortable .fa-sort,
+th.sortable .fa-sort-up,
+th.sortable .fa-sort-down {
+  margin-left: 4px;
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
+
+th.sortable .fa-sort-up,
+th.sortable .fa-sort-down {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
+/* Table pagination bar */
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--card-alt-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.pagination-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-current {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  font-weight: 600;
+  padding: 0 0.5rem;
+}
+
 table {
   width: 100%;
   border-collapse: separate;
