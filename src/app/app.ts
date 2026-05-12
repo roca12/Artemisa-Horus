@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef } from '@angular/core';
-import { GithubService, GithubTree, GithubTreeItem } from './github.service';
+import { GithubService, GithubTree, GithubTreeItem, GithubCommit } from './github.service';
 import { ConfigService, UserMapping, HiddenContributor } from './config.service';
-import { forkJoin, Subscription, interval } from 'rxjs';
+import { forkJoin, Subscription, interval, of } from 'rxjs';
+import { switchMap, catchError } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 
 /**
@@ -110,7 +111,125 @@ export class App implements OnInit, OnDestroy {
   /** List of contributors in the analyzed folder (kept for admin compatibility). */
   contributorsInFolder: ContributorInfo[] = [];
 
+  /** Table filter text. */
+  filterText = '';
+
+  /** Current page (1-based). */
+  currentPage = 1;
+
+  /** Page size options. */
+  readonly pageSizeOptions = [10, 20, 50];
+
+  /** Selected page size. */
+  pageSize = 10;
+
+  /** Column currently used for sorting. */
+  sortColumn: keyof FolderFileCount | '' = '';
+
+  /** Sort direction. */
+  sortDirection: 'asc' | 'desc' = 'asc';
+
   private refreshSubscription?: Subscription;
+
+  /**
+   * Returns the filtered, sorted and paginated folder file counts for the table.
+   */
+  get filteredFolderFileCounts(): FolderFileCount[] {
+    let data = this.folderFileCounts;
+
+    // Filter
+    if (this.filterText.trim()) {
+      const term = this.filterText.trim().toLowerCase();
+      data = data.filter(
+        (f) =>
+          f.displayName.toLowerCase().includes(term) ||
+          f.folderName.toLowerCase().includes(term) ||
+          (f.githubUsername && f.githubUsername.toLowerCase().includes(term)),
+      );
+    }
+
+    // Sort
+    if (this.sortColumn) {
+      const col = this.sortColumn;
+      const dir = this.sortDirection === 'asc' ? 1 : -1;
+      data = [...data].sort((a, b) => {
+        const aVal = a[col];
+        const bVal = b[col];
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          return aVal.localeCompare(bVal) * dir;
+        }
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return (aVal - bVal) * dir;
+        }
+        if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+          return (aVal === bVal ? 0 : aVal ? 1 : -1) * dir;
+        }
+        return 0;
+      });
+    }
+
+    return data;
+  }
+
+  /** Total pages based on filtered data. */
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.filteredFolderFileCounts.length / this.pageSize));
+  }
+
+  /** Paginated slice of filtered data. */
+  get paginatedFolderFileCounts(): FolderFileCount[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.filteredFolderFileCounts.slice(start, start + this.pageSize);
+  }
+
+  /** Index offset for row numbering. */
+  get pageOffset(): number {
+    return (this.currentPage - 1) * this.pageSize;
+  }
+
+  /**
+   * Toggles sorting by the given column.
+   */
+  sortBy(column: keyof FolderFileCount): void {
+    if (this.sortColumn === column) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = 'asc';
+    }
+    this.currentPage = 1;
+  }
+
+  /**
+   * Returns the sort icon class for a column header.
+   */
+  getSortIcon(column: keyof FolderFileCount): string {
+    if (this.sortColumn !== column) return 'fa-sort';
+    return this.sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+  }
+
+  /**
+   * Handles page size change.
+   */
+  onPageSizeChange(): void {
+    this.currentPage = 1;
+  }
+
+  /**
+   * Handles filter text change.
+   */
+  onFilterChange(): void {
+    this.currentPage = 1;
+  }
+
+  /**
+   * Navigates to a specific page.
+   */
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+    }
+  }
 
   constructor(
     private githubService: GithubService,
@@ -248,21 +367,54 @@ export class App implements OnInit, OnDestroy {
 
   /**
    * Fetches the repository tree from GitHub and counts files per folder.
+   * Also fetches commits to determine weekly file additions for the cap logic.
    */
   private fetchTreeData() {
-    this.githubService.getRepoTree().subscribe({
-      next: (tree: GithubTree) => {
-        this.processTree(tree);
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Error al obtener el árbol del repositorio:', err);
-        this.error = 'Error al cargar datos del repositorio. Intente nuevamente.';
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-    });
+    this.githubService
+      .getRepoTree()
+      .pipe(
+        switchMap((tree: GithubTree) => {
+          // Obtener commits que afectan la carpeta Resueltos_por_competidor
+          return forkJoin({
+            tree: of(tree),
+            commits: this.githubService
+              .getCommitsByPath('Resueltos_por_competidor')
+              .pipe(catchError(() => of([] as GithubCommit[]))),
+          });
+        }),
+        switchMap(({ tree, commits }) => {
+          // Para cada commit, obtener el detalle con archivos
+          if (commits.length === 0) {
+            return of({ tree, commitDetails: [] as GithubCommit[] });
+          }
+          const detailRequests = commits.map((c) =>
+            this.githubService
+              .getCommitDetail(c.sha)
+              .pipe(catchError(() => of(null as unknown as GithubCommit))),
+          );
+          return forkJoin(detailRequests).pipe(
+            switchMap((details) =>
+              of({
+                tree,
+                commitDetails: details.filter((d): d is GithubCommit => d !== null),
+              }),
+            ),
+          );
+        }),
+      )
+      .subscribe({
+        next: ({ tree, commitDetails }) => {
+          this.processTree(tree, commitDetails);
+          this.loading = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error al obtener el árbol del repositorio:', err);
+          this.error = 'Error al cargar datos del repositorio. Intente nuevamente.';
+          this.loading = false;
+          this.cdr.detectChanges();
+        },
+      });
   }
 
   /**
@@ -288,12 +440,73 @@ export class App implements OnInit, OnDestroy {
   }
 
   /**
+   * Calculates the week number for a given date relative to WEEK_START_DATE.
+   * Returns 0 if the date is before the start date.
+   */
+  private getWeekNumberForDate(date: Date): number {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const start = new Date(this.WEEK_START_DATE);
+    start.setHours(0, 0, 0, 0);
+    if (d < start) return 0;
+    const diffMs = d.getTime() - start.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return Math.floor(diffDays / 7) + 1;
+  }
+
+  /**
+   * Builds a map of folder -> week -> number of files added, based on commit details.
+   * Only counts files under "Resueltos_por_competidor/".
+   */
+  private buildWeeklyFileCounts(commitDetails: GithubCommit[]): {
+    [folder: string]: { [week: number]: number };
+  } {
+    const prefix = 'Resueltos_por_competidor/';
+    const weeklyMap: { [folder: string]: { [week: number]: number } } = {};
+
+    for (const commit of commitDetails) {
+      if (!commit.files || !commit.commit?.author?.date) continue;
+      const commitDate = new Date(commit.commit.author.date);
+      const weekNum = this.getWeekNumberForDate(commitDate);
+      if (weekNum === 0) continue;
+
+      for (const file of commit.files) {
+        if (file.status !== 'added' && file.status !== 'renamed') continue;
+        if (!file.filename.startsWith(prefix)) continue;
+
+        const relativePath = file.filename.substring(prefix.length);
+        const slashIndex = relativePath.indexOf('/');
+        if (slashIndex === -1) continue;
+
+        const folderName = relativePath.substring(0, slashIndex);
+        if (!weeklyMap[folderName]) weeklyMap[folderName] = {};
+        weeklyMap[folderName][weekNum] = (weeklyMap[folderName][weekNum] || 0) + 1;
+      }
+    }
+
+    return weeklyMap;
+  }
+
+  /**
+   * Calculates the effective exercise count for a folder, capping at EXERCISES_PER_WEEK per week.
+   * Extra exercises in a week do not carry over to the next week.
+   */
+  private calculateEffectiveCount(weeklyFiles: { [week: number]: number }): number {
+    let effective = 0;
+    for (const week of Object.keys(weeklyFiles)) {
+      effective += Math.min(weeklyFiles[Number(week)], this.EXERCISES_PER_WEEK);
+    }
+    return effective;
+  }
+
+  /**
    * Processes the repository tree to count files per folder under "Resueltos_por_competidor".
    * Subfolders are counted as part of their parent folder.
-   * Calculates weekly debt per folder.
+   * Calculates weekly debt per folder, applying the weekly cap restriction.
    * @param tree The GitHub tree response.
+   * @param commitDetails The detailed commits with file information.
    */
-  private processTree(tree: GithubTree) {
+  private processTree(tree: GithubTree, commitDetails: GithubCommit[] = []) {
     this.calculateWeekNumber();
 
     const prefix = 'Resueltos_por_competidor/';
@@ -321,9 +534,22 @@ export class App implements OnInit, OnDestroy {
       folderCounts[folderName] = (folderCounts[folderName] || 0) + 1;
     });
 
+    // Construir mapa de archivos por semana usando los commits
+    const weeklyMap = this.buildWeeklyFileCounts(commitDetails);
+
     this.folderFileCounts = Object.entries(folderCounts)
       .map(([folderName, fileCount]) => {
-        const missing = Math.max(0, this.totalRequiredExercises - fileCount);
+        // Calcular conteo efectivo con cap semanal
+        const folderWeekly = weeklyMap[folderName];
+        let effectiveCount: number;
+        if (folderWeekly && Object.keys(folderWeekly).length > 0) {
+          effectiveCount = this.calculateEffectiveCount(folderWeekly);
+        } else {
+          // Sin datos de commits, usar el conteo total (fallback)
+          effectiveCount = fileCount;
+        }
+
+        const missing = Math.max(0, this.totalRequiredExercises - effectiveCount);
         const isMapped = !!this.folderToRealName[folderName.toLowerCase()];
         const githubUsername = isMapped ? this.folderToGithub[folderName.toLowerCase()] || '' : '';
         return {
