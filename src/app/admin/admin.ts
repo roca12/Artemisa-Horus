@@ -593,8 +593,8 @@ export class Admin implements OnInit {
    * Clears local storage settings after user confirmation.
    */
   clearLocalStorage() {
-    // skipcq: JS-0052
     const message = '¿Estás seguro de que deseas limpiar la configuración local (tema y ajustes)?';
+    // skipcq: JS-0052
     if (window.confirm(message)) {
       localStorage.clear();
       this.toastr.success('Configuración local eliminada. La página se recargará.');

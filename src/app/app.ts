@@ -14,9 +14,12 @@ import { switchMap, catchError, finalize } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 
 declare const CodeMirror: {
-  fromTextArea: (element: HTMLTextAreaElement, options: object) => {
+  fromTextArea: (
+    element: HTMLTextAreaElement,
+    options: object,
+  ) => {
     setValue: (value: string) => void;
-    setOption: (option: string, value: any) => void;
+    setOption: (option: string, value: string | number | boolean | object) => void;
     focus: () => void;
     refresh: () => void;
     toTextArea: () => void;
