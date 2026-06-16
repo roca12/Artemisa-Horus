@@ -518,6 +518,14 @@ export class Admin implements OnInit {
   }
 
   /**
+   * Fallback for broken avatar images.
+   * @param event The error event.
+   */
+  handleImageError(event: any) {
+    event.target.src = '/gpc_logo.png';
+  }
+
+  /**
    * Gets the display name (real name or login) for a contributor (folder owner).
    * @param login The folder name.
    * @returns The display name.

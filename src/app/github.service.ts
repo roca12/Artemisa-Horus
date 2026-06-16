@@ -95,10 +95,17 @@ export class GithubService {
       .split('/')
       .map((segment) => encodeURIComponent(segment))
       .join('/');
-    return this.http.get<GithubContent[]>(
-      `${this.baseUrl}/${this.owner}/${this.repo}/contents/${encodedPath}`,
-      this.getHeaders(),
-    );
+    return this.http
+      .get<GithubContent[]>(
+        `${this.baseUrl}/${this.owner}/${this.repo}/contents/${encodedPath}`,
+        this.getHeaders(),
+      )
+      .pipe(
+        catchError((error: any) => {
+          console.warn(`Error al cargar contenido de carpeta: ${path}`, error);
+          return of([]); // Retornar array vacío en lugar de error 404
+        }),
+      );
   }
 
   getCommitsByPath(path: string): Observable<GithubCommit[]> {
@@ -131,7 +138,7 @@ export class GithubService {
         this.getHeaders(),
       )
       .pipe(
-        catchError((error) => {
+        catchError((error: any) => {
           if (error.status === 404) {
             return of({
               name: path.split('/').pop() || '',

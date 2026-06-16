@@ -329,6 +329,14 @@ export class App implements OnInit, OnDestroy {
   }
 
   /**
+   * Fallback for broken avatar images.
+   * @param event The error event.
+   */
+  handleImageError(event: any) {
+    event.target.src = '/gpc_logo.png';
+  }
+
+  /**
    * Sets the dark mode status and updates the document theme.
    * @param isDark True for dark mode, false for light mode.
    */

@@ -136,6 +136,7 @@
                     [alt]="folder.displayName"
                     class="competitor-avatar"
                     loading="lazy"
+                    (error)="handleImageError($event)"
                   />
                   <strong>{{ folder.displayName }}</strong>
                   <a

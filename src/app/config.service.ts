@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, catchError, of } from 'rxjs';
 import { environment } from '../environments/environment';
 
 export interface AppConfig {
@@ -29,7 +29,12 @@ export class ConfigService {
 
   getConfigs(): Observable<AppConfig[]> {
     console.log('Fetching configs from:', `${this.apiUrl}/config`);
-    return this.http.get<AppConfig[]>(`${this.apiUrl}/config`);
+    return this.http.get<AppConfig[]>(`${this.apiUrl}/config`).pipe(
+      catchError((error: any) => {
+        console.error('Error fetching configs:', error);
+        return of([]);
+      }),
+    );
   }
 
   getConfig(key: string): Observable<AppConfig> {
@@ -42,7 +47,12 @@ export class ConfigService {
   }
 
   getMappings(): Observable<UserMapping[]> {
-    return this.http.get<UserMapping[]>(`${this.apiUrl}/mappings`);
+    return this.http.get<UserMapping[]>(`${this.apiUrl}/mappings`).pipe(
+      catchError((error: any) => {
+        console.error('Error fetching mappings:', error);
+        return of([]);
+      }),
+    );
   }
 
   saveMapping(mapping: UserMapping): Observable<UserMapping> {
@@ -54,7 +64,12 @@ export class ConfigService {
   }
 
   getHidden(): Observable<HiddenContributor[]> {
-    return this.http.get<HiddenContributor[]>(`${this.apiUrl}/hidden`);
+    return this.http.get<HiddenContributor[]>(`${this.apiUrl}/hidden`).pipe(
+      catchError((error: any) => {
+        console.error('Error fetching hidden:', error);
+        return of([]);
+      }),
+    );
   }
 
   saveHidden(contributor: HiddenContributor): Observable<HiddenContributor> {
