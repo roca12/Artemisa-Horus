@@ -19,6 +19,7 @@ declare const CodeMirror: {
     setOption: (option: string, value: any) => void;
     focus: () => void;
     refresh: () => void;
+    toTextArea: () => void;
   };
 };
 
@@ -170,7 +171,7 @@ export class App implements OnInit, OnDestroy {
     }
   }
   codeEditorElement!: ElementRef;
-  private codeMirrorInstance: ReturnType<typeof CodeMirror.fromTextArea> | undefined;
+  private codeMirrorInstance: ReturnType<typeof CodeMirror.fromTextArea> | undefined | null;
 
   private refreshSubscription?: Subscription;
   private codeSubscription?: Subscription;
