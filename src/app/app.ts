@@ -366,6 +366,7 @@ export class App implements OnInit, OnDestroy {
       configs: this.configService.getConfigs(),
     }).subscribe({
       next: (config) => {
+        console.log('Configuraciones recibidas del backend:', config);
         // Cargar fecha de inicio
         const startConfig = config.configs.find((c) => c.configKey === 'WEEK_START_DATE');
         if (startConfig) {
@@ -395,11 +396,11 @@ export class App implements OnInit, OnDestroy {
         this.githubToReal = gitToReal;
         this.userMappings = mappingsObj;
 
-        this.hiddenContributors = config.hidden.map(
-          (h: HiddenContributor) => `${h.entityType}:${h.entityId}`,
+        this.hiddenContributors = config.hidden.map((h: HiddenContributor) =>
+          `${h.entityType}:${h.entityId}`.toUpperCase(),
         );
         APP_CONFIG.EXCLUDED_LOGINS.forEach((login) => {
-          const userPrefixId = `USER:${login}`;
+          const userPrefixId = `USER:${login}`.toUpperCase();
           if (!this.hiddenContributors.includes(userPrefixId)) {
             this.hiddenContributors.push(userPrefixId);
           }
@@ -511,8 +512,15 @@ export class App implements OnInit, OnDestroy {
   } {
     const prefix = 'Resueltos_por_competidor/';
     const weeklyMap: { [folder: string]: { [week: number]: Map<string, string> } } = {};
+    const seenExercises: { [folder: string]: Set<string> } = {};
 
-    for (const commit of commitDetails) {
+    // Ordenar commits del más antiguo al más reciente para que la primera aparición sea la primera cronológicamente
+    const sortedCommits = [...commitDetails].sort(
+      (a, b) =>
+        new Date(a.commit.author.date).getTime() - new Date(b.commit.author.date).getTime(),
+    );
+
+    for (const commit of sortedCommits) {
       if (!commit.files || !commit.commit?.author?.date) continue;
       const dateStr = commit.commit.author.date;
       const commitDate = new Date(dateStr);
@@ -532,10 +540,13 @@ export class App implements OnInit, OnDestroy {
         if (!fileName || fileName.includes('/')) continue; // Solo archivos directos en la carpeta del competidor
 
         if (!weeklyMap[folderName]) weeklyMap[folderName] = {};
-        if (!weeklyMap[folderName][weekNum]) weeklyMap[folderName][weekNum] = new Map();
+        if (!seenExercises[folderName]) seenExercises[folderName] = new Set();
 
-        if (!weeklyMap[folderName][weekNum].has(fileName)) {
+        // Solo agregar si no ha sido visto antes en ninguna semana
+        if (!seenExercises[folderName].has(fileName)) {
+          if (!weeklyMap[folderName][weekNum]) weeklyMap[folderName][weekNum] = new Map();
           weeklyMap[folderName][weekNum].set(fileName, dateStr);
+          seenExercises[folderName].add(fileName);
         }
       }
     }
@@ -588,8 +599,8 @@ export class App implements OnInit, OnDestroy {
       // Verificar si la carpeta o su dueño están ocultos
       const githubNickname = this.folderToGithub[folderName.toLowerCase()] || folderName;
       if (
-        this.hiddenContributors.includes(`USER:${githubNickname}`) ||
-        this.hiddenContributors.includes(`FOLDER:${folderName}`)
+        this.hiddenContributors.includes(`USER:${githubNickname}`.toUpperCase()) ||
+        this.hiddenContributors.includes(`FOLDER:${folderName}`.toUpperCase())
       ) {
         return;
       }

@@ -28,15 +28,17 @@ export class ConfigService {
   constructor(private http: HttpClient) {}
 
   getConfigs(): Observable<AppConfig[]> {
-    return this.http.get<AppConfig[]>(`${this.apiUrl}/configs`);
+    console.log('Fetching configs from:', `${this.apiUrl}/config`);
+    return this.http.get<AppConfig[]>(`${this.apiUrl}/config`);
   }
 
   getConfig(key: string): Observable<AppConfig> {
-    return this.http.get<AppConfig>(`${this.apiUrl}/configs/${key}`);
+    return this.http.get<AppConfig>(`${this.apiUrl}/config/${key}`);
   }
 
   saveConfig(config: AppConfig): Observable<AppConfig> {
-    return this.http.post<AppConfig>(`${this.apiUrl}/configs`, config);
+    console.log('Guardando configuración:', config);
+    return this.http.post<AppConfig>(`${this.apiUrl}/config`, config);
   }
 
   getMappings(): Observable<UserMapping[]> {

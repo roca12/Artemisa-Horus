@@ -44,7 +44,7 @@
                   [class.mapped]="isNicknameMapped(c.login)"
                   (click)="selectCollaborator(c)"
                 >
-                  <img [src]="c.avatar_url" class="avatar-sm" [alt]="c.login" />
+                  <img [src]="'https://images.weserv.nl/?url=' + c.avatar_url.replace('https://', '').replace('http://', '')" class="avatar-sm" [alt]="c.login" />
                   <span>{{ c.login }}</span>
                   <span class="mapped-badge" *ngIf="isNicknameMapped(c.login)">Mapeado</span>
                   <i class="fas fa-check-circle" *ngIf="newNickname === c.login"></i>
@@ -190,7 +190,7 @@
                 <tbody>
                   <tr *ngFor="let c of contributors()" [class.hidden-row]="isHidden(c.login)">
                     <td>
-                      <img [src]="c.avatar_url" class="admin-avatar" [alt]="c.login" />
+                      <img [src]="'https://images.weserv.nl/?url=' + c.avatar_url.replace('https://', '').replace('http://', '')" class="admin-avatar" [alt]="c.login" />
                     </td>
                     <td>
                       <strong>{{ c.login }}</strong>
@@ -293,7 +293,8 @@
                 <div class="input-wrapper">
                   <input
                     type="date"
-                    [(ngModel)]="weekStartDate"
+                    [ngModel]="weekStartDate()"
+                    (ngModelChange)="weekStartDate.set($event)"
                     class="admin-input"
                   />
                   <i class="fas fa-calendar-day"></i>
@@ -362,7 +363,7 @@
             >
               <td class="col-num">{{ i + 1 }}</td>
               <td class="report-competitor-cell">
-                <img [src]="c.avatarUrl" class="report-avatar-sm" alt="" />
+                <img [src]="'https://images.weserv.nl/?url=' + (c.avatarUrl || '').replace('https://', '').replace('http://', '')" class="report-avatar-sm" alt="" />
                 <span>{{ getDisplayName(c.login) }}</span>
               </td>
               <td>

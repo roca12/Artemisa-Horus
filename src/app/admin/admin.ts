@@ -70,7 +70,7 @@ export class Admin implements OnInit {
   newFolderName = '';
   newNickname = '';
   newRealName = '';
-  weekStartDate = ''; // Formato YYYY-MM-DD
+  weekStartDate = signal(''); // Formato YYYY-MM-DD
   repoFolders = signal<string[]>([]);
   isLoadingFolders = signal(false);
   today = new Date();
@@ -186,7 +186,7 @@ export class Admin implements OnInit {
         this.appConfigs.set(data);
         const startConfig = data.find((c) => c.configKey === 'WEEK_START_DATE');
         if (startConfig) {
-          this.weekStartDate = startConfig.configValue;
+          this.weekStartDate.set(startConfig.configValue);
         }
       },
       error: (err: any) => console.error('Error al cargar configuraciones:', err),
@@ -197,14 +197,15 @@ export class Admin implements OnInit {
    * Updates the week start date configuration.
    */
   updateWeekStartDate() {
-    if (!this.weekStartDate) {
+    const value = this.weekStartDate();
+    if (!value) {
       this.toastr.warning('Por favor seleccione una fecha');
       return;
     }
 
     const config: AppConfig = {
       configKey: 'WEEK_START_DATE',
-      configValue: this.weekStartDate,
+      configValue: value,
     };
 
     this.configService.saveConfig(config).subscribe({
@@ -213,7 +214,7 @@ export class Admin implements OnInit {
         this.loadConfigs();
       },
       error: (err: any) => {
-        console.error('Error al guardar configuración:', err);
+        console.error('Error detallado al guardar configuración:', err);
         this.toastr.error('Error al guardar configuración');
       },
     });
@@ -392,7 +393,9 @@ export class Admin implements OnInit {
     const contributor = this.contributors().find(
       (c) => c.login.toLowerCase() === nickname.toLowerCase(),
     );
-    return contributor?.avatar_url || `https://github.com/${nickname}.png`;
+    const originalUrl = contributor?.avatar_url || `https://github.com/${nickname}.png`;
+    // Usar proxy para evitar problemas de cookies cross-site (SameSite)
+    return `https://images.weserv.nl/?url=${encodeURIComponent(originalUrl.replace(/^https?:\/\//, ''))}`;
   }
 
   /**

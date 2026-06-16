@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/configs")
+@RequestMapping({"/api/config", "/api/configs", "/config", "/configs", "/api/v1/config"})
 @CrossOrigin(
         origins = {
                 "https://horus.gpcueb.org",
@@ -23,11 +23,14 @@ import java.util.List;
 )
 public class AppConfigController {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AppConfigController.class);
+
     @Autowired
     private AppConfigService service;
 
     @GetMapping
     public List<AppConfigDTO> getAll() {
+        logger.info("Solicitud GET recibida para obtener todas las configuraciones");
         return service.getAllConfigs();
     }
 

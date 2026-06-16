@@ -132,9 +132,10 @@
                 <td class="competitor-cell">
                   <img
                     *ngIf="folder.isMapped && folder.githubUsername"
-                    [src]="'https://github.com/' + folder.githubUsername + '.png?size=32'"
+                    [src]="'https://images.weserv.nl/?url=github.com/' + folder.githubUsername + '.png?size=32'"
                     [alt]="folder.displayName"
                     class="competitor-avatar"
+                    loading="lazy"
                   />
                   <strong>{{ folder.displayName }}</strong>
                   <a
