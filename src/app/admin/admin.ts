@@ -11,7 +11,13 @@ import {
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { GithubService, GithubCollaborator, GithubContent } from '../github.service';
-import { ConfigService, UserMapping, HiddenContributor, AppConfig, ContributorInfo } from '../config.service';
+import {
+  ConfigService,
+  UserMapping,
+  HiddenContributor,
+  AppConfig,
+  ContributorInfo,
+} from '../config.service';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
 import { compareSync } from 'bcryptjs';
@@ -422,9 +428,7 @@ export class Admin implements OnInit {
           this.folderToGithub = newFolderToGithub;
           // No borramos de githubToReal porque otros mapeos podrían usarlo
         }
-        this.mappings.set(
-          this.mappings().filter((m: UserMapping) => m.folderName !== folderName),
-        );
+        this.mappings.set(this.mappings().filter((m: UserMapping) => m.folderName !== folderName));
         this.toastr.info('Mapeo eliminado');
       },
       error: (err: HttpErrorResponse) => {
