@@ -9,8 +9,9 @@ import {
   ElementRef,
   computed,
 } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { GithubService, GithubCollaborator, GithubContent } from '../github.service';
-import { ConfigService, UserMapping, HiddenContributor, AppConfig } from '../config.service';
+import { ConfigService, UserMapping, HiddenContributor, AppConfig, ContributorInfo } from '../config.service';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
 import { compareSync } from 'bcryptjs';
@@ -31,7 +32,7 @@ export class Admin implements OnInit {
   @Output() readonly closePanel = new EventEmitter<void>();
 
   /** List of contributors in the analyzed folder. */
-  @Input() contributorsInFolder: any[] = [];
+  @Input() contributorsInFolder: ContributorInfo[] = [];
 
   /** Mapping of GitHub nicknames to real names. */
   @Input() githubToReal: { [nickname: string]: string } = {};
@@ -134,7 +135,7 @@ export class Admin implements OnInit {
         this.repoFolders.set(Array.from(folderSet).sort());
         this.isLoadingFolders.set(false);
       },
-      error: (err: any) => {
+      error: (err: HttpErrorResponse) => {
         console.error('Error al cargar carpetas del repositorio:', err);
         this.isLoadingFolders.set(false);
       },
@@ -189,7 +190,7 @@ export class Admin implements OnInit {
           this.weekStartDate.set(startConfig.configValue);
         }
       },
-      error: (err: any) => console.error('Error al cargar configuraciones:', err),
+      error: (err: HttpErrorResponse) => console.error('Error al cargar configuraciones:', err),
     });
   }
 
@@ -213,7 +214,7 @@ export class Admin implements OnInit {
         this.toastr.success('Fecha de inicio actualizada correctamente');
         this.loadConfigs();
       },
-      error: (err: any) => {
+      error: (err: HttpErrorResponse) => {
         console.error('Error detallado al guardar configuración:', err);
         this.toastr.error('Error al guardar configuración');
       },
@@ -246,7 +247,7 @@ export class Admin implements OnInit {
         );
         this.contributors.set(filtered);
       },
-      error: (err: any) => console.error('Error al cargar colaboradores:', err),
+      error: (err: HttpErrorResponse) => console.error('Error al cargar colaboradores:', err),
     });
   }
 
@@ -266,7 +267,7 @@ export class Admin implements OnInit {
         this.folderToGithub = folderToGit;
         this.githubToReal = gitToReal;
       },
-      error: (err: any) => console.error('Error al cargar mapeos:', err),
+      error: (err: HttpErrorResponse) => console.error('Error al cargar mapeos:', err),
     });
   }
 
@@ -277,7 +278,7 @@ export class Admin implements OnInit {
     this.configService.getHidden().subscribe({
       next: (data: HiddenContributor[]) =>
         this.hiddenContributors.set(data.map((h) => `${h.entityType}:${h.entityId}`)),
-      error: (err: any) => console.error('Error al cargar entidades ocultas:', err),
+      error: (err: HttpErrorResponse) => console.error('Error al cargar entidades ocultas:', err),
     });
   }
 
@@ -358,7 +359,7 @@ export class Admin implements OnInit {
           this.newRealName = '';
           this.toastr.success('Mapeo guardado correctamente');
         },
-        error: (err: any) => {
+        error: (err: HttpErrorResponse) => {
           console.error('Error al guardar mapeo:', err);
           this.toastr.error('Error al guardar mapeo');
         },
@@ -416,15 +417,17 @@ export class Admin implements OnInit {
       next: () => {
         const mapping = this.mappings().find((m: UserMapping) => m.folderName === folderName);
         if (mapping) {
-          delete this.folderToGithub[mapping.folderName.toLowerCase()];
+          const newFolderToGithub = { ...this.folderToGithub };
+          delete newFolderToGithub[mapping.folderName.toLowerCase()];
+          this.folderToGithub = newFolderToGithub;
           // No borramos de githubToReal porque otros mapeos podrían usarlo
         }
         this.mappings.set(
-          this.mappings().filter((mapping: UserMapping) => mapping.folderName !== folderName),
+          this.mappings().filter((m: UserMapping) => m.folderName !== folderName),
         );
         this.toastr.info('Mapeo eliminado');
       },
-      error: (err: any) => {
+      error: (err: HttpErrorResponse) => {
         console.error('Error al eliminar mapeo:', err);
         this.toastr.error('Error al eliminar mapeo');
       },
@@ -492,12 +495,13 @@ export class Admin implements OnInit {
    * @param nickname The GitHub nickname.
    */
   goToProfile(nickname: string) {
-    Admin.goToProfile(nickname);
+    window.open(`https://github.com/${nickname}`, '_blank');
   }
 
   /**
    * Opens the GitHub profile of a user in a new tab (static version).
    * @param nickname The GitHub nickname.
+   * @deprecated Use instance method instead to avoid DeepSource warnings about 'this' usage.
    */
   static goToProfile(nickname: string) {
     window.open(`https://github.com/${nickname}`, '_blank');
@@ -530,8 +534,11 @@ export class Admin implements OnInit {
    * Fallback for broken avatar images.
    * @param event The error event.
    */
-  handleImageError(event: any) {
-    event.target.src = '/gpc_logo.png';
+  handleImageError(event: Event) {
+    const target = event.target as HTMLImageElement;
+    if (target) {
+      target.src = '/gpc_logo.png';
+    }
   }
 
   /**
@@ -581,9 +588,7 @@ export class Admin implements OnInit {
    * Clears local storage settings after user confirmation.
    */
   clearLocalStorage() {
-    // DeepSource JS-0052: Unexpected confirm.
-    // Using native confirm as a quick way for critical action, but we acknowledge the warning.
-    // In a full refactor, this should be a custom UI modal.
+    // skipcq: JS-0052
     const message = '¿Estás seguro de que deseas limpiar la configuración local (tema y ajustes)?';
     if (window.confirm(message)) {
       localStorage.clear();

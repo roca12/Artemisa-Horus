@@ -1,11 +1,11 @@
 import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { GithubService, GithubTree, GithubTreeItem, GithubCommit } from './github.service';
-import { ConfigService, UserMapping, HiddenContributor, AppConfig } from './config.service';
+import { ConfigService, UserMapping, HiddenContributor, ContributorInfo } from './config.service';
 import { forkJoin, Subscription, interval, of } from 'rxjs';
 import { switchMap, catchError, finalize } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 
-declare var CodeMirror: any;
+declare const CodeMirror: any;
 
 /**
  * Constantes globales de configuración de la aplicación.
@@ -44,20 +44,6 @@ export interface FolderFileCount {
   githubUsername: string;
   weeklyExercises: { [week: number]: ExerciseInfo[] };
   isExpanded?: boolean;
-}
-
-/**
- * Interface representing general information about a contributor (kept for admin compatibility).
- */
-export interface ContributorInfo {
-  login: string;
-  avatarUrl?: string;
-  totalFiles: number;
-  weeklyStats: never[];
-  totalDebt: number;
-  isCurrentGoalMet: boolean;
-  totalDocumented: number;
-  totalUndocumented: number;
 }
 
 /**
@@ -228,7 +214,7 @@ export class App implements OnInit, OnDestroy {
   getWeeksForFolder(folder: FolderFileCount): number[] {
     return Object.keys(folder.weeklyExercises)
       .map(Number)
-      .sort((a, b) => b - a); // Mostrar semanas recientes primero
+      .sort((a, b) => b - a);
   }
 
   /**
@@ -236,10 +222,13 @@ export class App implements OnInit, OnDestroy {
    */
   getWeekRange(weekNum: number): string {
     const start = new Date(this.weekStartDate);
-    start.setDate(start.getDate() + (weekNum - 1) * 7);
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
 
+    /**
+     * Formatea una fecha a string corto.
+     * @param d Fecha a formatear.
+     */
     const formatDate = (d: Date) =>
       d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
     return `${formatDate(start)} - ${formatDate(end)}`;
@@ -378,8 +367,8 @@ export class App implements OnInit, OnDestroy {
    * Fallback for broken avatar images.
    * @param event The error event.
    */
-  handleImageError(event: any) {
-    event.target.src = '/gpc_logo.png';
+  handleImageError(event: Event) {
+    (event.target as HTMLImageElement).src = '/gpc_logo.png';
   }
 
   /**
@@ -439,7 +428,7 @@ export class App implements OnInit, OnDestroy {
       .subscribe({
         next: (content) => {
           console.log('[ViewCode] Respuesta recibida de GitHub');
-          if (content && content.content) {
+          if (content?.content) {
             try {
               // GitHub content is usually base64 encoded
               // Eliminamos TODOS los caracteres no válidos para Base64 antes de decodificar
@@ -458,7 +447,7 @@ export class App implements OnInit, OnDestroy {
               console.error('[ViewCode] Error al decodificar contenido:', e);
               this.selectedExerciseCode = 'Error al decodificar el contenido del archivo.';
             }
-          } else if (content && content.notFound) {
+          } else if (content?.notFound) {
             console.log('[ViewCode] Archivo no encontrado');
             this.selectedExerciseCode = '// El archivo no fue encontrado en GitHub.';
           } else {
@@ -479,7 +468,7 @@ export class App implements OnInit, OnDestroy {
    * Initializes or updates the CodeMirror instance.
    */
   private initCodeMirror() {
-    console.log(`Iniciando CodeMirror...`);
+    console.log('Iniciando CodeMirror...');
     if (!this.codeEditorElement) {
       console.warn('codeEditorElement no disponible para initCodeMirror');
       return;
@@ -510,7 +499,7 @@ export class App implements OnInit, OnDestroy {
         console.log('Creando nueva instancia de CodeMirror');
         this.codeMirrorInstance = CodeMirror.fromTextArea(textarea, {
           lineNumbers: true,
-          mode: mode,
+          mode,
           theme: this.isDarkMode() ? 'monokai' : 'default',
           readOnly: true,
           lineWrapping: true,
@@ -724,12 +713,12 @@ export class App implements OnInit, OnDestroy {
    * Returns 0 if the date is before the start date.
    */
   private getWeekNumberForDate(date: Date): number {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    const start = new Date(this.weekStartDate);
-    start.setHours(0, 0, 0, 0);
-    if (d < start) return 0;
-    const diffMs = d.getTime() - start.getTime();
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const startDate = new Date(this.weekStartDate);
+    startDate.setHours(0, 0, 0, 0);
+    if (targetDate < startDate) return 0;
+    const diffMs = targetDate.getTime() - startDate.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     return Math.floor(diffDays / 7) + 1;
   }
@@ -856,9 +845,9 @@ export class App implements OnInit, OnDestroy {
 
         // Convertir folderWeekly de Map a ExerciseInfo[] para el objeto final
         const weeklyExercises: { [week: number]: ExerciseInfo[] } = {};
-        Object.entries(folderWeekly).forEach(([week, filesMap]) => {
-          const w = Number(week);
-          weeklyExercises[w] = Array.from((filesMap as Map<string, string>).entries()).map(
+        Object.entries(folderWeekly).forEach(([weekKey, filesMap]) => {
+          const weekNum = Number(weekKey);
+          weeklyExercises[weekNum] = Array.from((filesMap as Map<string, string>).entries()).map(
             ([name, date]) => ({
               name,
               date,
@@ -867,7 +856,7 @@ export class App implements OnInit, OnDestroy {
         });
 
         const missing = Math.max(0, this.totalRequiredExercises - effectiveCount);
-        const isMapped = !!this.folderToRealName[folderName.toLowerCase()];
+        const isMapped = Boolean(this.folderToRealName[folderName.toLowerCase()]);
         const githubUsername = isMapped ? this.folderToGithub[folderName.toLowerCase()] || '' : '';
         return {
           folderName,
@@ -895,7 +884,7 @@ export class App implements OnInit, OnDestroy {
 
     // Generar contributorsInFolder para compatibilidad con el admin panel
     this.contributorsInFolder = this.folderFileCounts.map((f) => {
-      const isMapped = !!this.folderToRealName[f.folderName.toLowerCase()];
+      const isMapped = Boolean(this.folderToRealName[f.folderName.toLowerCase()]);
       const githubNickname = isMapped ? this.folderToGithub[f.folderName.toLowerCase()] : null;
 
       return {
