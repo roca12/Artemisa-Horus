@@ -9,7 +9,7 @@ import {
   ElementRef,
   computed,
 } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { GithubService, GithubCollaborator, GithubContent } from '../github.service';
 import { ConfigService, UserMapping, HiddenContributor, AppConfig, ContributorInfo } from '../config.service';
 import { environment } from '../../environments/environment';
@@ -417,8 +417,8 @@ export class Admin implements OnInit {
       next: () => {
         const mapping = this.mappings().find((m: UserMapping) => m.folderName === folderName);
         if (mapping) {
-          const newFolderToGithub = { ...this.folderToGithub };
-          delete newFolderToGithub[mapping.folderName.toLowerCase()];
+          const folderKey = mapping.folderName.toLowerCase();
+          const { [folderKey]: _, ...newFolderToGithub } = this.folderToGithub;
           this.folderToGithub = newFolderToGithub;
           // No borramos de githubToReal porque otros mapeos podrían usarlo
         }
@@ -495,6 +495,7 @@ export class Admin implements OnInit {
    * @param nickname The GitHub nickname.
    */
   goToProfile(nickname: string) {
+    console.debug('Navegando al perfil de:', this.getDisplayName(nickname));
     window.open(`https://github.com/${nickname}`, '_blank');
   }
 
@@ -536,7 +537,7 @@ export class Admin implements OnInit {
    */
   handleImageError(event: Event) {
     const target = event.target as HTMLImageElement;
-    if (target) {
+    if (target && this.today) {
       target.src = '/gpc_logo.png';
     }
   }

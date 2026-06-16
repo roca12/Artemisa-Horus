@@ -93,8 +93,8 @@ export class ConfigService {
    * @param folderName Nombre de la carpeta del mapeo a eliminar.
    * @returns Observable de la operación.
    */
-  deleteMapping(folderName: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/mappings/${folderName}`);
+  deleteMapping(folderName: string): Observable<object> {
+    return this.http.delete<object>(`${this.apiUrl}/mappings/${folderName}`);
   }
 
   /**
@@ -124,7 +124,7 @@ export class ConfigService {
    * @param id ID del colaborador a eliminar.
    * @returns Observable de la operación.
    */
-  deleteHidden(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/hidden/${id}`);
+  deleteHidden(id: string): Observable<object> {
+    return this.http.delete<object>(`${this.apiUrl}/hidden/${id}`);
   }
 }

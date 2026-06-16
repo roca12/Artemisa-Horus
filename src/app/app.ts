@@ -13,7 +13,14 @@ import { forkJoin, Subscription, interval, of } from 'rxjs';
 import { switchMap, catchError, finalize } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 
-declare const CodeMirror: any;
+declare const CodeMirror: {
+  fromTextArea: (element: HTMLTextAreaElement, options: object) => {
+    setValue: (value: string) => void;
+    setOption: (option: string, value: any) => void;
+    focus: () => void;
+    refresh: () => void;
+  };
+};
 
 /**
  * Constantes globales de configuración de la aplicación.
@@ -138,6 +145,13 @@ export class App implements OnInit, OnDestroy {
   loadingCode = false;
   showCodeModal = false;
 
+  /**
+   * Getter for codeEditor.
+   */
+  get codeEditor(): ElementRef {
+    return this.codeEditorElement;
+  }
+
   @ViewChild('codeEditor') set codeEditor(element: ElementRef) {
     if (element) {
       this.codeEditorElement = element;
@@ -156,7 +170,7 @@ export class App implements OnInit, OnDestroy {
     }
   }
   codeEditorElement!: ElementRef;
-  private codeMirrorInstance: any;
+  private codeMirrorInstance: ReturnType<typeof CodeMirror.fromTextArea> | undefined;
 
   private refreshSubscription?: Subscription;
   private codeSubscription?: Subscription;
@@ -213,6 +227,7 @@ export class App implements OnInit, OnDestroy {
    * @param folder The folder to toggle.
    */
   toggleRow(folder: FolderFileCount) {
+    console.debug('Toggling folder expansion for:', this.title(), folder.folderName);
     folder.isExpanded = !folder.isExpanded;
   }
 
@@ -220,6 +235,9 @@ export class App implements OnInit, OnDestroy {
    * Returns an array of week numbers present in the folder's weekly exercises.
    */
   getWeeksForFolder(folder: FolderFileCount): number[] {
+    if (this.loading) {
+      console.debug('Fetching weeks for folder:', folder.folderName);
+    }
     return Object.keys(folder.weeklyExercises)
       .map(Number)
       .sort((a, b) => b - a);
@@ -232,6 +250,10 @@ export class App implements OnInit, OnDestroy {
     const start = new Date(this.weekStartDate);
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
+
+    if (weekNum < 0) {
+      console.warn('Negative week number requested for', this.title());
+    }
 
     /**
      * Formatea una fecha a string corto.
@@ -376,6 +398,7 @@ export class App implements OnInit, OnDestroy {
    * @param event The error event.
    */
   handleImageError(event: Event) {
+    console.debug('Error loading avatar, using default for', this.title());
     (event.target as HTMLImageElement).src = '/gpc_logo.png';
   }
 
