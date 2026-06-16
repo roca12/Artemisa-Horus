@@ -1,4 +1,12 @@
-import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  signal,
+  ChangeDetectorRef,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { GithubService, GithubTree, GithubTreeItem, GithubCommit } from './github.service';
 import { ConfigService, UserMapping, HiddenContributor, ContributorInfo } from './config.service';
 import { forkJoin, Subscription, interval, of } from 'rxjs';
@@ -503,7 +511,7 @@ export class App implements OnInit, OnDestroy {
           theme: this.isDarkMode() ? 'monokai' : 'default',
           readOnly: true,
           lineWrapping: true,
-          viewportMargin: Infinity
+          viewportMargin: Infinity,
         });
 
         // Forzamos el valor directamente en la instancia
@@ -735,8 +743,7 @@ export class App implements OnInit, OnDestroy {
 
     // Ordenar commits del más antiguo al más reciente para que la primera aparición sea la primera cronológicamente
     const sortedCommits = [...commitDetails].sort(
-      (a, b) =>
-        new Date(a.commit.author.date).getTime() - new Date(b.commit.author.date).getTime(),
+      (a, b) => new Date(a.commit.author.date).getTime() - new Date(b.commit.author.date).getTime(),
     );
 
     for (const commit of sortedCommits) {
@@ -889,9 +896,7 @@ export class App implements OnInit, OnDestroy {
 
       return {
         login: f.folderName,
-        avatarUrl: githubNickname
-          ? `https://github.com/${githubNickname}.png`
-          : '/gpc_logo.png',
+        avatarUrl: githubNickname ? `https://github.com/${githubNickname}.png` : '/gpc_logo.png',
         totalFiles: f.fileCount,
         weeklyStats: [],
         totalDebt: f.missingExercises,
