@@ -283,7 +283,6 @@ export class App implements OnInit, OnDestroy {
     this.initTheme();
     this.loadData();
     this.refreshSubscription = interval(APP_CONFIG.AUTO_REFRESH_INTERVAL).subscribe(() => {
-      console.log('Recargando datos automáticamente...');
       this.loadData();
     });
   }
@@ -364,7 +363,6 @@ export class App implements OnInit, OnDestroy {
    * Loads data from the configuration service and then fetches GitHub tree data.
    */
   loadData() {
-    console.log('Iniciando carga de datos...');
     this.loading = true;
     this.error = null;
 
@@ -374,14 +372,12 @@ export class App implements OnInit, OnDestroy {
       configs: this.configService.getConfigs(),
     }).subscribe({
       next: (config) => {
-        console.log('Configuraciones recibidas del backend:', config);
         // Cargar fecha de inicio
         const startConfig = config.configs.find((c) => c.configKey === 'WEEK_START_DATE');
         if (startConfig) {
           // Asumimos formato YYYY-MM-DD del backend
           const [year, month, day] = startConfig.configValue.split('-').map(Number);
           this.weekStartDate = new Date(year, month - 1, day);
-          console.log('Fecha de inicio cargada desde DB:', this.weekStartDate);
           this.calculateWeekNumber();
         }
 
@@ -665,10 +661,14 @@ export class App implements OnInit, OnDestroy {
 
     // Generar contributorsInFolder para compatibilidad con el admin panel
     this.contributorsInFolder = this.folderFileCounts.map((f) => {
-      const githubNickname = this.folderToGithub[f.folderName.toLowerCase()] || f.folderName;
+      const isMapped = !!this.folderToRealName[f.folderName.toLowerCase()];
+      const githubNickname = isMapped ? this.folderToGithub[f.folderName.toLowerCase()] : null;
+
       return {
         login: f.folderName,
-        avatarUrl: `https://github.com/${githubNickname}.png`,
+        avatarUrl: githubNickname
+          ? `https://github.com/${githubNickname}.png`
+          : '/gpc_logo.png',
         totalFiles: f.fileCount,
         weeklyStats: [],
         totalDebt: f.missingExercises,

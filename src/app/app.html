@@ -131,8 +131,7 @@
                 </td>
                 <td class="competitor-cell">
                   <img
-                    *ngIf="folder.isMapped && folder.githubUsername"
-                    [src]="'https://images.weserv.nl/?url=github.com/' + folder.githubUsername + '.png?size=32'"
+                    [src]="folder.isMapped && folder.githubUsername ? 'https://github.com/' + folder.githubUsername + '.png?size=32' : '/gpc_logo.png'"
                     [alt]="folder.displayName"
                     class="competitor-avatar"
                     loading="lazy"

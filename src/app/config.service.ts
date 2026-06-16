@@ -28,7 +28,6 @@ export class ConfigService {
   constructor(private http: HttpClient) {}
 
   getConfigs(): Observable<AppConfig[]> {
-    console.log('Fetching configs from:', `${this.apiUrl}/config`);
     return this.http.get<AppConfig[]>(`${this.apiUrl}/config`).pipe(
       catchError((error: any) => {
         console.error('Error fetching configs:', error);
@@ -37,12 +36,7 @@ export class ConfigService {
     );
   }
 
-  getConfig(key: string): Observable<AppConfig> {
-    return this.http.get<AppConfig>(`${this.apiUrl}/config/${key}`);
-  }
-
   saveConfig(config: AppConfig): Observable<AppConfig> {
-    console.log('Guardando configuración:', config);
     return this.http.post<AppConfig>(`${this.apiUrl}/config`, config);
   }
 

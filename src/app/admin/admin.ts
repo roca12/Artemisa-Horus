@@ -393,9 +393,18 @@ export class Admin implements OnInit {
     const contributor = this.contributors().find(
       (c) => c.login.toLowerCase() === nickname.toLowerCase(),
     );
-    const originalUrl = contributor?.avatar_url || `https://github.com/${nickname}.png`;
-    // Usar proxy para evitar problemas de cookies cross-site (SameSite)
-    return `https://images.weserv.nl/?url=${encodeURIComponent(originalUrl.replace(/^https?:\/\//, ''))}`;
+    if (contributor?.avatar_url) {
+      return contributor.avatar_url;
+    }
+    // Si no está en la lista de contribuidores de la API, verificamos si tenemos un mapeo
+    const mapping = this.mappings().find(
+      (m) => m.githubNickname.toLowerCase() === nickname.toLowerCase()
+    );
+    if (mapping) {
+      return `https://github.com/${mapping.githubNickname}.png`;
+    }
+
+    return '/gpc_logo.png';
   }
 
   /**
