@@ -52,80 +52,220 @@
     <section>
       <h2><i class="fas fa-calendar-week"></i> Seguimiento Semanal de Ejercicios</h2>
       <p class="section-subtitle">
-        <strong>Semana {{ currentWeekNumber }}</strong> (desde el 20 de abril de 2026). Cada semana
-        se requieren <strong>{{ EXERCISES_PER_WEEK }}</strong> ejercicios nuevos. Acumulado
+        <strong>Semana {{ currentWeekNumber }}</strong> (desde el {{ formattedStartDate }}). Cada
+        semana se requieren <strong>{{ EXERCISES_PER_WEEK }}</strong> ejercicios nuevos. Acumulado
         requerido: <strong>{{ totalRequiredExercises }}</strong> ejercicios. Total general:
         <strong>{{ totalFiles }}</strong> archivos en
         <strong>{{ folderFileCounts.length }}</strong> carpetas.
       </p>
+
+      <div class="table-controls" *ngIf="folderFileCounts.length > 0">
+        <div class="table-filter">
+          <i class="fas fa-search"></i>
+          <input
+            type="text"
+            [(ngModel)]="filterText"
+            (ngModelChange)="onFilterChange()"
+            placeholder="Buscar por nombre, carpeta o usuario..."
+            class="filter-input"
+          />
+        </div>
+        <div class="table-page-size">
+          <label for="pageSize">Mostrar:</label>
+          <select
+            id="pageSize"
+            [(ngModel)]="pageSize"
+            (ngModelChange)="onPageSizeChange()"
+            class="page-size-select"
+          >
+            <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option>
+          </select>
+          <span>por página</span>
+        </div>
+      </div>
 
       <div class="table-container" *ngIf="folderFileCounts.length > 0">
         <table>
           <thead>
             <tr>
               <th class="col-num">#</th>
-              <th><i class="fas fa-user"></i> Competidor</th>
-              <th><i class="fas fa-folder"></i> Carpeta</th>
-              <th><i class="fas fa-file-code"></i> Archivos</th>
-              <th><i class="fas fa-bullseye"></i> Requeridos</th>
-              <th><i class="fas fa-exclamation-circle"></i> Faltan</th>
-              <th><i class="fas fa-check-circle"></i> Estado</th>
+              <th></th>
+              <th class="sortable" (click)="sortBy('displayName')">
+                <i class="fas fa-user"></i> Competidor
+                <i class="fas" [ngClass]="getSortIcon('displayName')"></i>
+              </th>
+              <th class="sortable" (click)="sortBy('folderName')">
+                <i class="fas fa-folder"></i> Carpeta
+                <i class="fas" [ngClass]="getSortIcon('folderName')"></i>
+              </th>
+              <th class="sortable" (click)="sortBy('fileCount')">
+                <i class="fas fa-file-code"></i> Archivos
+                <i class="fas" [ngClass]="getSortIcon('fileCount')"></i>
+              </th>
+              <th class="sortable" (click)="sortBy('requiredExercises')">
+                <i class="fas fa-bullseye"></i> Requeridos
+                <i class="fas" [ngClass]="getSortIcon('requiredExercises')"></i>
+              </th>
+              <th class="sortable" (click)="sortBy('missingExercises')">
+                <i class="fas fa-exclamation-circle"></i> Faltan
+                <i class="fas" [ngClass]="getSortIcon('missingExercises')"></i>
+              </th>
+              <th class="sortable" (click)="sortBy('isGoalMet')">
+                <i class="fas fa-check-circle"></i> Estado
+                <i class="fas" [ngClass]="getSortIcon('isGoalMet')"></i>
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              *ngFor="let folder of folderFileCounts; let i = index"
-              [class.goal-met]="folder.isGoalMet"
-              [class.goal-not-met]="!folder.isGoalMet"
-            >
-              <td class="col-num">{{ i + 1 }}</td>
-              <td class="competitor-cell">
-                <img
-                  *ngIf="folder.isMapped && folder.githubUsername"
-                  [src]="'https://github.com/' + folder.githubUsername + '.png?size=32'"
-                  [alt]="folder.displayName"
-                  class="competitor-avatar"
-                />
-                <strong>{{ folder.displayName }}</strong>
-                <a
-                  *ngIf="folder.isMapped && folder.githubUsername"
-                  [href]="'https://github.com/' + folder.githubUsername"
-                  target="_blank"
-                  class="github-link"
-                  [title]="'Ver perfil de ' + folder.githubUsername + ' en GitHub'"
-                >
-                  <i class="fab fa-github"></i>
-                </a>
-                <span
-                  *ngIf="!folder.isMapped"
-                  class="unmapped-icon"
-                  title="Carpeta sin mapear. El coach debe actualizar el mapeo en el panel de administración."
-                >
-                  <i class="fas fa-exclamation-triangle"></i>
-                </span>
-              </td>
-              <td>{{ folder.folderName }}</td>
-              <td>
-                <span class="stat-value">{{ folder.fileCount }}</span>
-              </td>
-              <td>{{ folder.requiredExercises }}</td>
-              <td>
-                <span *ngIf="folder.missingExercises > 0" class="debt-value">
-                  -{{ folder.missingExercises }}
-                </span>
-                <span *ngIf="folder.missingExercises === 0" class="no-debt-value">0</span>
-              </td>
-              <td>
-                <span *ngIf="folder.isGoalMet" class="status-ok">
-                  <i class="fas fa-check-circle"></i> Al día
-                </span>
-                <span *ngIf="!folder.isGoalMet" class="status-behind">
-                  <i class="fas fa-times-circle"></i> Debe
-                </span>
-              </td>
-            </tr>
+            <ng-container *ngFor="let folder of paginatedFolderFileCounts; let i = index">
+              <tr
+                [class.goal-met]="folder.isGoalMet"
+                [class.goal-not-met]="!folder.isGoalMet"
+                [class.row-expanded]="folder.isExpanded"
+                (click)="toggleRow(folder)"
+                class="clickable-row"
+              >
+                <td class="col-num">{{ pageOffset + i + 1 }}</td>
+                <td class="col-expand">
+                  <i
+                    class="fas"
+                    [ngClass]="folder.isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'"
+                  ></i>
+                </td>
+                <td class="competitor-cell">
+                  <img
+                    [src]="
+                      folder.isMapped && folder.githubUsername
+                        ? 'https://github.com/' + folder.githubUsername + '.png?size=32'
+                        : '/gpc_logo.png'
+                    "
+                    [alt]="folder.displayName"
+                    class="competitor-avatar"
+                    loading="lazy"
+                    (error)="handleImageError($event)"
+                  />
+                  <strong>{{ folder.displayName }}</strong>
+                  <a
+                    *ngIf="folder.isMapped && folder.githubUsername"
+                    [href]="'https://github.com/' + folder.githubUsername"
+                    target="_blank"
+                    class="github-link"
+                    (click)="$event.stopPropagation()"
+                    [title]="'Ver perfil de ' + folder.githubUsername + ' en GitHub'"
+                  >
+                    <i class="fab fa-github"></i>
+                  </a>
+                  <span
+                    *ngIf="!folder.isMapped"
+                    class="unmapped-icon"
+                    title="Carpeta sin mapear. El coach debe actualizar el mapeo en el panel de administración."
+                  >
+                    <i class="fas fa-exclamation-triangle"></i>
+                  </span>
+                </td>
+                <td>{{ folder.folderName }}</td>
+                <td>
+                  <span class="stat-value">{{ folder.fileCount }}</span>
+                </td>
+                <td>{{ folder.requiredExercises }}</td>
+                <td>
+                  <span *ngIf="folder.missingExercises > 0" class="debt-value">
+                    -{{ folder.missingExercises }}
+                  </span>
+                  <span *ngIf="folder.missingExercises === 0" class="no-debt-value">0</span>
+                </td>
+                <td>
+                  <span *ngIf="folder.isGoalMet" class="status-ok">
+                    <i class="fas fa-check-circle"></i> Al día
+                  </span>
+                  <span *ngIf="!folder.isGoalMet" class="status-behind">
+                    <i class="fas fa-times-circle"></i> Debe
+                  </span>
+                </td>
+              </tr>
+              <!-- Fila de detalle (Ejercicios Semanales) -->
+              <tr *ngIf="folder.isExpanded" class="detail-row">
+                <td colspan="9">
+                  <div class="weekly-details">
+                    <div *ngIf="getWeeksForFolder(folder).length === 0" class="no-weekly-data">
+                      <i class="fas fa-info-circle"></i> No hay registros de commits para esta
+                      carpeta.
+                    </div>
+                    <div *ngFor="let weekNum of getWeeksForFolder(folder)" class="week-group">
+                      <h4 class="week-title">
+                        Semana {{ weekNum }}
+                        <small class="week-dates">({{ getWeekRange(weekNum) }})</small>
+                      </h4>
+                      <ul class="exercise-list">
+                        <li
+                          *ngFor="let ex of folder.weeklyExercises[weekNum]"
+                          class="exercise-item"
+                        >
+                          <div class="exercise-info-group">
+                            <span class="exercise-name">{{ ex.name }}</span>
+                            <span class="exercise-date"
+                              ><i class="far fa-clock"></i>
+                              {{ ex.date | date: 'dd/MM/yyyy HH:mm' }}</span
+                            >
+                          </div>
+                          <button
+                            class="btn-view-code"
+                            (click)="viewCode(folder.folderName, ex.name); $event.stopPropagation()"
+                            title="Ver código fuente"
+                          >
+                            <i class="fas fa-code"></i> Ver Código
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
           </tbody>
         </table>
+      </div>
+
+      <div class="table-pagination" *ngIf="folderFileCounts.length > 0 && totalPages > 1">
+        <span class="pagination-info">
+          Mostrando {{ pageOffset + 1 }}–{{ pageOffset + paginatedFolderFileCounts.length }} de
+          {{ filteredFolderFileCounts.length }}
+        </span>
+        <div class="pagination-buttons">
+          <button
+            (click)="goToPage(1)"
+            [disabled]="currentPage === 1"
+            class="pagination-btn"
+            title="Primera página"
+          >
+            <i class="fas fa-angle-double-left"></i>
+          </button>
+          <button
+            (click)="goToPage(currentPage - 1)"
+            [disabled]="currentPage === 1"
+            class="pagination-btn"
+            title="Página anterior"
+          >
+            <i class="fas fa-angle-left"></i>
+          </button>
+          <span class="pagination-current">Página {{ currentPage }} de {{ totalPages }}</span>
+          <button
+            (click)="goToPage(currentPage + 1)"
+            [disabled]="currentPage === totalPages"
+            class="pagination-btn"
+            title="Página siguiente"
+          >
+            <i class="fas fa-angle-right"></i>
+          </button>
+          <button
+            (click)="goToPage(totalPages)"
+            [disabled]="currentPage === totalPages"
+            class="pagination-btn"
+            title="Última página"
+          >
+            <i class="fas fa-angle-double-right"></i>
+          </button>
+        </div>
       </div>
 
       <p *ngIf="folderFileCounts.length === 0" class="no-data">
@@ -142,4 +282,32 @@
     [folderToRealName]="folderToRealName"
     (closePanel)="toggleAdmin()"
   ></app-admin>
+
+  <!-- Modal de Visualización de Código -->
+  <div class="code-modal-backdrop" *ngIf="showCodeModal" (click)="closeCodeModal()">
+    <div class="code-modal-content" (click)="$event.stopPropagation()">
+      <div class="code-modal-header">
+        <div class="code-title">
+          <i class="fas fa-code"></i>
+          <h3>{{ selectedExerciseName }}</h3>
+        </div>
+        <button class="close-btn" (click)="closeCodeModal()">&times;</button>
+      </div>
+
+      <div class="code-modal-body">
+        <div *ngIf="loadingCode" class="code-loading">
+          <div class="spinner"></div>
+          <p>Cargando código desde GitHub...</p>
+        </div>
+
+        <div *ngIf="!loadingCode" class="code-container">
+          <textarea #codeEditor></textarea>
+        </div>
+      </div>
+
+      <div class="code-modal-footer">
+        <button class="btn-secondary" (click)="closeCodeModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
 </div>

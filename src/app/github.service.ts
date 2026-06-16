@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, forkJoin, of } from 'rxjs';
-import { map, switchMap, catchError } from 'rxjs/operators';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { environment } from '../environments/environment';
 
 export interface GithubCommit {
@@ -61,6 +61,9 @@ export interface GithubTree {
   truncated: boolean;
 }
 
+/**
+ * Servicio para interactuar con la API de GitHub.
+ */
 @Injectable({
   providedIn: 'root',
 })
@@ -74,6 +77,10 @@ export class GithubService {
     this.token = environment.githubToken;
   }
 
+  /**
+   * Obtiene las cabeceras para las peticiones a la API de GitHub.
+   * @returns Un objeto con las cabeceras configuradas.
+   */
   private getHeaders() {
     const headers: Record<string, string> = {};
     if (this.token && this.token.trim() !== '') {
@@ -83,24 +90,33 @@ export class GithubService {
     return { headers };
   }
 
-  getCommits(): Observable<GithubCommit[]> {
-    return this.http.get<GithubCommit[]>(
-      `${this.baseUrl}/${this.owner}/${this.repo}/commits?per_page=100`,
-      this.getHeaders(),
-    );
-  }
-
+  /**
+   * Obtiene el contenido de una carpeta en el repositorio de GitHub.
+   * @param path Ruta de la carpeta.
+   * @returns Observable con la lista de contenidos.
+   */
   getFolderContents(path: string): Observable<GithubContent[]> {
     const encodedPath = path
       .split('/')
       .map((segment) => encodeURIComponent(segment))
       .join('/');
-    return this.http.get<GithubContent[]>(
-      `${this.baseUrl}/${this.owner}/${this.repo}/contents/${encodedPath}`,
-      this.getHeaders(),
-    );
+    return this.http
+      .get<
+        GithubContent[]
+      >(`${this.baseUrl}/${this.owner}/${this.repo}/contents/${encodedPath}`, this.getHeaders())
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          console.warn(`Error al cargar contenido de carpeta: ${path}`, error);
+          return of([]); // Retornar array vacío en lugar de error 404
+        }),
+      );
   }
 
+  /**
+   * Obtiene los commits que han afectado a una ruta específica.
+   * @param path Ruta del archivo o carpeta.
+   * @returns Observable con la lista de commits.
+   */
   getCommitsByPath(path: string): Observable<GithubCommit[]> {
     return this.http.get<GithubCommit[]>(
       `${this.baseUrl}/${this.owner}/${this.repo}/commits?path=${encodeURIComponent(
@@ -110,6 +126,11 @@ export class GithubService {
     );
   }
 
+  /**
+   * Obtiene los detalles de un commit específico.
+   * @param sha Hash del commit.
+   * @returns Observable con el detalle del commit.
+   */
   getCommitDetail(sha: string): Observable<GithubCommit> {
     return this.http.get<GithubCommit>(
       `${this.baseUrl}/${this.owner}/${this.repo}/commits/${sha}`,
@@ -117,9 +138,12 @@ export class GithubService {
     );
   }
 
+  /**
+   * Obtiene el contenido de un archivo específico.
+   * @param path Ruta del archivo.
+   * @returns Observable con el contenido del archivo y flag de no encontrado.
+   */
   getFileContent(path: string): Observable<GithubContent & { notFound?: boolean }> {
-    // Codificar cada segmento del path para manejar espacios y caracteres especiales,
-    // pero manteniendo los separadores '/' para que la API de GitHub lo reconozca
     const encodedPath = path
       .split('/')
       .map((segment) => encodeURIComponent(segment))
@@ -131,11 +155,11 @@ export class GithubService {
         this.getHeaders(),
       )
       .pipe(
-        catchError((error) => {
+        catchError((error: HttpErrorResponse) => {
           if (error.status === 404) {
             return of({
               name: path.split('/').pop() || '',
-              path: path,
+              path,
               type: 'file',
               url: '',
               content: '',
@@ -145,23 +169,20 @@ export class GithubService {
           console.warn(`Error al cargar: ${path} (status: ${error.status})`, error);
           return of({
             name: path.split('/').pop() || '',
-            path: path,
+            path,
             type: 'file',
             url: '',
             content: '',
-            notFound: true, // Si hay cualquier error al obtenerlo, lo tratamos como no encontrado para evitar que aparezca si no es accesible
+            notFound: true,
           } as GithubContent & { notFound: boolean });
         }),
       );
   }
 
-  getContributors(): Observable<GithubCollaborator[]> {
-    return this.http.get<GithubCollaborator[]>(
-      `${this.baseUrl}/${this.owner}/${this.repo}/contributors`,
-      this.getHeaders(),
-    );
-  }
-
+  /**
+   * Obtiene la lista de colaboradores del repositorio.
+   * @returns Observable con la lista de colaboradores.
+   */
   getCollaborators(): Observable<GithubCollaborator[]> {
     return this.http.get<GithubCollaborator[]>(
       `${this.baseUrl}/${this.owner}/${this.repo}/collaborators`,
@@ -169,6 +190,11 @@ export class GithubService {
     );
   }
 
+  /**
+   * Obtiene el árbol del repositorio.
+   * @param branch Rama del repositorio (por defecto 'main').
+   * @returns Observable con el árbol de archivos.
+   */
   getRepoTree(branch = 'main'): Observable<GithubTree> {
     return this.http.get<GithubTree>(
       `${this.baseUrl}/${this.owner}/${this.repo}/git/trees/${branch}?recursive=1`,

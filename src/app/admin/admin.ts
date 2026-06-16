@@ -9,8 +9,15 @@ import {
   ElementRef,
   computed,
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { GithubService, GithubCollaborator, GithubContent } from '../github.service';
-import { ConfigService, UserMapping, HiddenContributor } from '../config.service';
+import {
+  ConfigService,
+  UserMapping,
+  HiddenContributor,
+  AppConfig,
+  ContributorInfo,
+} from '../config.service';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
 import { compareSync } from 'bcryptjs';
@@ -31,7 +38,7 @@ export class Admin implements OnInit {
   @Output() readonly closePanel = new EventEmitter<void>();
 
   /** List of contributors in the analyzed folder. */
-  @Input() contributorsInFolder: any[] = [];
+  @Input() contributorsInFolder: ContributorInfo[] = [];
 
   /** Mapping of GitHub nicknames to real names. */
   @Input() githubToReal: { [nickname: string]: string } = {};
@@ -65,10 +72,12 @@ export class Admin implements OnInit {
   mappings = signal<UserMapping[]>([]);
   contributors = signal<GithubCollaborator[]>([]);
   hiddenContributors = signal<string[]>([]);
+  appConfigs = signal<AppConfig[]>([]);
 
   newFolderName = '';
   newNickname = '';
   newRealName = '';
+  weekStartDate = signal(''); // Formato YYYY-MM-DD
   repoFolders = signal<string[]>([]);
   isLoadingFolders = signal(false);
   today = new Date();
@@ -107,6 +116,7 @@ export class Admin implements OnInit {
   ngOnInit() {
     this.loadMappings();
     this.loadHidden();
+    this.loadConfigs();
     this.calculateWeekRange();
     this.loadRepoFolders();
   }
@@ -131,7 +141,7 @@ export class Admin implements OnInit {
         this.repoFolders.set(Array.from(folderSet).sort());
         this.isLoadingFolders.set(false);
       },
-      error: (err: any) => {
+      error: (err: HttpErrorResponse) => {
         console.error('Error al cargar carpetas del repositorio:', err);
         this.isLoadingFolders.set(false);
       },
@@ -175,6 +185,49 @@ export class Admin implements OnInit {
   }
 
   /**
+   * Loads application configurations from the configuration service.
+   */
+  loadConfigs() {
+    this.configService.getConfigs().subscribe({
+      next: (data: AppConfig[]) => {
+        this.appConfigs.set(data);
+        const startConfig = data.find((c) => c.configKey === 'WEEK_START_DATE');
+        if (startConfig) {
+          this.weekStartDate.set(startConfig.configValue);
+        }
+      },
+      error: (err: HttpErrorResponse) => console.error('Error al cargar configuraciones:', err),
+    });
+  }
+
+  /**
+   * Updates the week start date configuration.
+   */
+  updateWeekStartDate() {
+    const value = this.weekStartDate();
+    if (!value) {
+      this.toastr.warning('Por favor seleccione una fecha');
+      return;
+    }
+
+    const config: AppConfig = {
+      configKey: 'WEEK_START_DATE',
+      configValue: value,
+    };
+
+    this.configService.saveConfig(config).subscribe({
+      next: () => {
+        this.toastr.success('Fecha de inicio actualizada correctamente');
+        this.loadConfigs();
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Error detallado al guardar configuración:', err);
+        this.toastr.error('Error al guardar configuración');
+      },
+    });
+  }
+
+  /**
    * Loads the list of contributors from GitHub, filtering out bots and excluded users.
    */
   loadContributors() {
@@ -200,7 +253,7 @@ export class Admin implements OnInit {
         );
         this.contributors.set(filtered);
       },
-      error: (err: any) => console.error('Error al cargar colaboradores:', err),
+      error: (err: HttpErrorResponse) => console.error('Error al cargar colaboradores:', err),
     });
   }
 
@@ -220,7 +273,7 @@ export class Admin implements OnInit {
         this.folderToGithub = folderToGit;
         this.githubToReal = gitToReal;
       },
-      error: (err: any) => console.error('Error al cargar mapeos:', err),
+      error: (err: HttpErrorResponse) => console.error('Error al cargar mapeos:', err),
     });
   }
 
@@ -231,7 +284,7 @@ export class Admin implements OnInit {
     this.configService.getHidden().subscribe({
       next: (data: HiddenContributor[]) =>
         this.hiddenContributors.set(data.map((h) => `${h.entityType}:${h.entityId}`)),
-      error: (err: any) => console.error('Error al cargar entidades ocultas:', err),
+      error: (err: HttpErrorResponse) => console.error('Error al cargar entidades ocultas:', err),
     });
   }
 
@@ -312,7 +365,7 @@ export class Admin implements OnInit {
           this.newRealName = '';
           this.toastr.success('Mapeo guardado correctamente');
         },
-        error: (err: any) => {
+        error: (err: HttpErrorResponse) => {
           console.error('Error al guardar mapeo:', err);
           this.toastr.error('Error al guardar mapeo');
         },
@@ -347,7 +400,18 @@ export class Admin implements OnInit {
     const contributor = this.contributors().find(
       (c) => c.login.toLowerCase() === nickname.toLowerCase(),
     );
-    return contributor?.avatar_url || `https://github.com/${nickname}.png`;
+    if (contributor?.avatar_url) {
+      return contributor.avatar_url;
+    }
+    // Si no está en la lista de contribuidores de la API, verificamos si tenemos un mapeo
+    const mapping = this.mappings().find(
+      (m) => m.githubNickname.toLowerCase() === nickname.toLowerCase(),
+    );
+    if (mapping) {
+      return `https://github.com/${mapping.githubNickname}.png`;
+    }
+
+    return '/gpc_logo.png';
   }
 
   /**
@@ -359,15 +423,15 @@ export class Admin implements OnInit {
       next: () => {
         const mapping = this.mappings().find((m: UserMapping) => m.folderName === folderName);
         if (mapping) {
-          delete this.folderToGithub[mapping.folderName.toLowerCase()];
+          const folderKey = mapping.folderName.toLowerCase();
+          const { [folderKey]: _, ...newFolderToGithub } = this.folderToGithub;
+          this.folderToGithub = newFolderToGithub;
           // No borramos de githubToReal porque otros mapeos podrían usarlo
         }
-        this.mappings.set(
-          this.mappings().filter((mapping: UserMapping) => mapping.folderName !== folderName),
-        );
+        this.mappings.set(this.mappings().filter((m: UserMapping) => m.folderName !== folderName));
         this.toastr.info('Mapeo eliminado');
       },
-      error: (err: any) => {
+      error: (err: HttpErrorResponse) => {
         console.error('Error al eliminar mapeo:', err);
         this.toastr.error('Error al eliminar mapeo');
       },
@@ -435,12 +499,14 @@ export class Admin implements OnInit {
    * @param nickname The GitHub nickname.
    */
   goToProfile(nickname: string) {
-    Admin.goToProfile(nickname);
+    console.debug('Navegando al perfil de:', this.getDisplayName(nickname));
+    window.open(`https://github.com/${nickname}`, '_blank');
   }
 
   /**
    * Opens the GitHub profile of a user in a new tab (static version).
    * @param nickname The GitHub nickname.
+   * @deprecated Use instance method instead to avoid DeepSource warnings about 'this' usage.
    */
   static goToProfile(nickname: string) {
     window.open(`https://github.com/${nickname}`, '_blank');
@@ -467,6 +533,17 @@ export class Admin implements OnInit {
    */
   onClose() {
     this.closePanel.emit();
+  }
+
+  /**
+   * Fallback for broken avatar images.
+   * @param event The error event.
+   */
+  handleImageError(event: Event) {
+    const target = event.target as HTMLImageElement;
+    if (target && this.today) {
+      target.src = '/gpc_logo.png';
+    }
   }
 
   /**
@@ -516,10 +593,8 @@ export class Admin implements OnInit {
    * Clears local storage settings after user confirmation.
    */
   clearLocalStorage() {
-    // DeepSource JS-0052: Unexpected confirm.
-    // Using native confirm as a quick way for critical action, but we acknowledge the warning.
-    // In a full refactor, this should be a custom UI modal.
     const message = '¿Estás seguro de que deseas limpiar la configuración local (tema y ajustes)?';
+    // skipcq: JS-0052
     if (window.confirm(message)) {
       localStorage.clear();
       this.toastr.success('Configuración local eliminada. La página se recargará.');
