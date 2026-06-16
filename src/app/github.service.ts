@@ -89,10 +89,9 @@ export class GithubService {
       .map((segment) => encodeURIComponent(segment))
       .join('/');
     return this.http
-      .get<GithubContent[]>(
-        `${this.baseUrl}/${this.owner}/${this.repo}/contents/${encodedPath}`,
-        this.getHeaders(),
-      )
+      .get<
+        GithubContent[]
+      >(`${this.baseUrl}/${this.owner}/${this.repo}/contents/${encodedPath}`, this.getHeaders())
       .pipe(
         catchError((error: any) => {
           console.warn(`Error al cargar contenido de carpeta: ${path}`, error);

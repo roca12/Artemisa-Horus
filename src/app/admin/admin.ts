@@ -398,7 +398,7 @@ export class Admin implements OnInit {
     }
     // Si no está en la lista de contribuidores de la API, verificamos si tenemos un mapeo
     const mapping = this.mappings().find(
-      (m) => m.githubNickname.toLowerCase() === nickname.toLowerCase()
+      (m) => m.githubNickname.toLowerCase() === nickname.toLowerCase(),
     );
     if (mapping) {
       return `https://github.com/${mapping.githubNickname}.png`;
