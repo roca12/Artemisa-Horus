@@ -1797,3 +1797,114 @@ body.dark-theme .github-profile-btn:hover {
 .dark-theme .goal-not-met {
   background-color: rgba(231, 76, 60, 0.15);
 }
+
+/* Row Expansion & Details */
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clickable-row:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark-theme .clickable-row:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.row-expanded {
+  background-color: rgba(52, 152, 219, 0.1) !important;
+}
+
+.dark-theme .row-expanded {
+  background-color: rgba(52, 152, 219, 0.2) !important;
+}
+
+.col-expand {
+  width: 30px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.detail-row {
+  background-color: var(--card-alt-bg);
+}
+
+.weekly-details {
+  padding: 1rem 2rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.no-weekly-data {
+  text-align: center;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.week-group {
+  margin-bottom: 1.5rem;
+}
+
+.week-group:last-child {
+  margin-bottom: 0;
+}
+
+.week-title {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  color: var(--accent-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+}
+
+.week-dates {
+  font-weight: normal;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.exercise-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+}
+
+.exercise-item {
+  background-color: var(--card-background);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.exercise-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 10px;
+}
+
+.exercise-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

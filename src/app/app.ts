@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef } from '@angular/core';
 import { GithubService, GithubTree, GithubTreeItem, GithubCommit } from './github.service';
-import { ConfigService, UserMapping, HiddenContributor } from './config.service';
+import { ConfigService, UserMapping, HiddenContributor, AppConfig } from './config.service';
 import { forkJoin, Subscription, interval, of } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
@@ -23,6 +23,11 @@ const APP_CONFIG = {
   AUTO_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutos
 };
 
+export interface ExerciseInfo {
+  name: string;
+  date: string;
+}
+
 /**
  * Interface representing file count data for a competitor folder.
  */
@@ -35,6 +40,8 @@ export interface FolderFileCount {
   isGoalMet: boolean;
   isMapped: boolean;
   githubUsername: string;
+  weeklyExercises: { [week: number]: ExerciseInfo[] };
+  isExpanded?: boolean;
 }
 
 /**
@@ -105,8 +112,8 @@ export class App implements OnInit, OnDestroy {
   /** Exercises required per week. */
   readonly EXERCISES_PER_WEEK = 3;
 
-  /** Start date: Monday April 20, 2026. */
-  readonly WEEK_START_DATE = new Date(2026, 3, 20); // Month is 0-indexed: 3 = April
+  /** Start date for counting exercises. */
+  weekStartDate = new Date(2026, 5, 1); // Default fallback: June 1, 2026
 
   /** List of contributors in the analyzed folder (kept for admin compatibility). */
   contributorsInFolder: ContributorInfo[] = [];
@@ -169,6 +176,37 @@ export class App implements OnInit, OnDestroy {
     }
 
     return data;
+  }
+
+  /**
+   * Toggles the expanded state of a folder row to show/hide weekly details.
+   * @param folder The folder to toggle.
+   */
+  toggleRow(folder: FolderFileCount) {
+    folder.isExpanded = !folder.isExpanded;
+  }
+
+  /**
+   * Returns an array of week numbers present in the folder's weekly exercises.
+   */
+  getWeeksForFolder(folder: FolderFileCount): number[] {
+    return Object.keys(folder.weeklyExercises)
+      .map(Number)
+      .sort((a, b) => b - a); // Mostrar semanas recientes primero
+  }
+
+  /**
+   * Returns a range of dates for a given week number.
+   */
+  getWeekRange(weekNum: number): string {
+    const start = new Date(this.weekStartDate);
+    start.setDate(start.getDate() + (weekNum - 1) * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+
+    const formatDate = (d: Date) =>
+      d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    return `${formatDate(start)} - ${formatDate(end)}`;
   }
 
   /** Total pages based on filtered data. */
@@ -325,8 +363,19 @@ export class App implements OnInit, OnDestroy {
     forkJoin({
       mappings: this.configService.getMappings(),
       hidden: this.configService.getHidden(),
+      configs: this.configService.getConfigs(),
     }).subscribe({
       next: (config) => {
+        // Cargar fecha de inicio
+        const startConfig = config.configs.find((c) => c.configKey === 'WEEK_START_DATE');
+        if (startConfig) {
+          // Asumimos formato YYYY-MM-DD del backend
+          const [year, month, day] = startConfig.configValue.split('-').map(Number);
+          this.weekStartDate = new Date(year, month - 1, day);
+          console.log('Fecha de inicio cargada desde DB:', this.weekStartDate);
+          this.calculateWeekNumber();
+        }
+
         const realNames: { [folder: string]: string } = {};
         const githubNicknames: { [folder: string]: string } = {};
         const gitToReal: { [nickname: string]: string } = {};
@@ -424,7 +473,7 @@ export class App implements OnInit, OnDestroy {
   private calculateWeekNumber(): void {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    const start = new Date(this.WEEK_START_DATE);
+    const start = new Date(this.weekStartDate);
     start.setHours(0, 0, 0, 0);
 
     if (now < start) {
@@ -446,7 +495,7 @@ export class App implements OnInit, OnDestroy {
   private getWeekNumberForDate(date: Date): number {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
-    const start = new Date(this.WEEK_START_DATE);
+    const start = new Date(this.weekStartDate);
     start.setHours(0, 0, 0, 0);
     if (d < start) return 0;
     const diffMs = d.getTime() - start.getTime();
@@ -455,18 +504,18 @@ export class App implements OnInit, OnDestroy {
   }
 
   /**
-   * Builds a map of folder -> week -> number of files added, based on commit details.
    * Only counts files under "Resueltos_por_competidor/".
    */
   private buildWeeklyFileCounts(commitDetails: GithubCommit[]): {
-    [folder: string]: { [week: number]: number };
+    [folder: string]: { [week: number]: Map<string, string> };
   } {
     const prefix = 'Resueltos_por_competidor/';
-    const weeklyMap: { [folder: string]: { [week: number]: number } } = {};
+    const weeklyMap: { [folder: string]: { [week: number]: Map<string, string> } } = {};
 
     for (const commit of commitDetails) {
       if (!commit.files || !commit.commit?.author?.date) continue;
-      const commitDate = new Date(commit.commit.author.date);
+      const dateStr = commit.commit.author.date;
+      const commitDate = new Date(dateStr);
       const weekNum = this.getWeekNumberForDate(commitDate);
       if (weekNum === 0) continue;
 
@@ -479,8 +528,15 @@ export class App implements OnInit, OnDestroy {
         if (slashIndex === -1) continue;
 
         const folderName = relativePath.substring(0, slashIndex);
+        const fileName = relativePath.substring(slashIndex + 1);
+        if (!fileName || fileName.includes('/')) continue; // Solo archivos directos en la carpeta del competidor
+
         if (!weeklyMap[folderName]) weeklyMap[folderName] = {};
-        weeklyMap[folderName][weekNum] = (weeklyMap[folderName][weekNum] || 0) + 1;
+        if (!weeklyMap[folderName][weekNum]) weeklyMap[folderName][weekNum] = new Map();
+
+        if (!weeklyMap[folderName][weekNum].has(fileName)) {
+          weeklyMap[folderName][weekNum].set(fileName, dateStr);
+        }
       }
     }
 
@@ -488,13 +544,18 @@ export class App implements OnInit, OnDestroy {
   }
 
   /**
-   * Calculates the effective exercise count for a folder, capping at EXERCISES_PER_WEEK per week.
-   * Extra exercises in a week do not carry over to the next week.
+   * Calculates the effective exercise count for a folder.
+   * Each week, a minimum of 3 exercises must be done.
+   * Extra exercises in a week DO NOT count toward future weeks.
+   * However, they are still reflected in the total file count.
    */
-  private calculateEffectiveCount(weeklyFiles: { [week: number]: number }): number {
+  private calculateEffectiveCount(weeklyFiles: { [week: number]: Map<string, string> }): number {
     let effective = 0;
-    for (const week of Object.keys(weeklyFiles)) {
-      effective += Math.min(weeklyFiles[Number(week)], this.EXERCISES_PER_WEEK);
+    // Iterate from week 1 up to the current week
+    for (let w = 1; w <= this.currentWeekNumber; w++) {
+      const exercisesInWeek = weeklyFiles[w]?.size || 0;
+      // Cap the contribution of each week to EXERCISES_PER_WEEK (3)
+      effective += Math.min(exercisesInWeek, this.EXERCISES_PER_WEEK);
     }
     return effective;
   }
@@ -510,7 +571,7 @@ export class App implements OnInit, OnDestroy {
     this.calculateWeekNumber();
 
     const prefix = 'Resueltos_por_competidor/';
-    const folderCounts: { [folder: string]: number } = {};
+    const folderFiles: { [folder: string]: Set<string> } = {};
 
     tree.tree.forEach((item: GithubTreeItem) => {
       if (item.type !== 'blob') return;
@@ -521,6 +582,8 @@ export class App implements OnInit, OnDestroy {
       if (slashIndex === -1) return; // Archivo suelto en la raíz, no en subcarpeta
 
       const folderName = relativePath.substring(0, slashIndex);
+      const fileName = relativePath.substring(slashIndex + 1);
+      if (!fileName || fileName.includes('/')) return; // Solo archivos directos en la carpeta del competidor
 
       // Verificar si la carpeta o su dueño están ocultos
       const githubNickname = this.folderToGithub[folderName.toLowerCase()] || folderName;
@@ -531,23 +594,36 @@ export class App implements OnInit, OnDestroy {
         return;
       }
 
-      folderCounts[folderName] = (folderCounts[folderName] || 0) + 1;
+      if (!folderFiles[folderName]) folderFiles[folderName] = new Set();
+      folderFiles[folderName].add(fileName);
     });
 
     // Construir mapa de archivos por semana usando los commits
     const weeklyMap = this.buildWeeklyFileCounts(commitDetails);
 
-    this.folderFileCounts = Object.entries(folderCounts)
-      .map(([folderName, fileCount]) => {
-        // Calcular conteo efectivo con cap semanal
-        const folderWeekly = weeklyMap[folderName];
+    this.folderFileCounts = Object.entries(folderFiles)
+      .map(([folderName, filesSet]) => {
+        const fileCount = filesSet.size;
+        const folderWeekly = weeklyMap[folderName] || {};
         let effectiveCount: number;
-        if (folderWeekly && Object.keys(folderWeekly).length > 0) {
+        if (Object.keys(folderWeekly).length > 0) {
           effectiveCount = this.calculateEffectiveCount(folderWeekly);
         } else {
-          // Sin datos de commits, usar el conteo total (fallback)
-          effectiveCount = fileCount;
+          // Si no hay datos de commits, asumimos 0 efectivos ya que no podemos validar semanas
+          effectiveCount = 0;
         }
+
+        // Convertir folderWeekly de Map a ExerciseInfo[] para el objeto final
+        const weeklyExercises: { [week: number]: ExerciseInfo[] } = {};
+        Object.entries(folderWeekly).forEach(([week, filesMap]) => {
+          const w = Number(week);
+          weeklyExercises[w] = Array.from((filesMap as Map<string, string>).entries()).map(
+            ([name, date]) => ({
+              name,
+              date,
+            }),
+          );
+        });
 
         const missing = Math.max(0, this.totalRequiredExercises - effectiveCount);
         const isMapped = !!this.folderToRealName[folderName.toLowerCase()];
@@ -561,6 +637,7 @@ export class App implements OnInit, OnDestroy {
           isGoalMet: missing === 0,
           isMapped,
           githubUsername,
+          weeklyExercises,
         };
       })
       .sort((a, b) => b.fileCount - a.fileCount);

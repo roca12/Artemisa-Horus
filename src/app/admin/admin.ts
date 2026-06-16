@@ -10,7 +10,7 @@ import {
   computed,
 } from '@angular/core';
 import { GithubService, GithubCollaborator, GithubContent } from '../github.service';
-import { ConfigService, UserMapping, HiddenContributor } from '../config.service';
+import { ConfigService, UserMapping, HiddenContributor, AppConfig } from '../config.service';
 import { environment } from '../../environments/environment';
 import { ToastrService } from 'ngx-toastr';
 import { compareSync } from 'bcryptjs';
@@ -65,10 +65,12 @@ export class Admin implements OnInit {
   mappings = signal<UserMapping[]>([]);
   contributors = signal<GithubCollaborator[]>([]);
   hiddenContributors = signal<string[]>([]);
+  appConfigs = signal<AppConfig[]>([]);
 
   newFolderName = '';
   newNickname = '';
   newRealName = '';
+  weekStartDate = ''; // Formato YYYY-MM-DD
   repoFolders = signal<string[]>([]);
   isLoadingFolders = signal(false);
   today = new Date();
@@ -107,6 +109,7 @@ export class Admin implements OnInit {
   ngOnInit() {
     this.loadMappings();
     this.loadHidden();
+    this.loadConfigs();
     this.calculateWeekRange();
     this.loadRepoFolders();
   }
@@ -172,6 +175,48 @@ export class Admin implements OnInit {
     } else {
       this.toastr.error('Contraseña incorrecta');
     }
+  }
+
+  /**
+   * Loads application configurations from the configuration service.
+   */
+  loadConfigs() {
+    this.configService.getConfigs().subscribe({
+      next: (data: AppConfig[]) => {
+        this.appConfigs.set(data);
+        const startConfig = data.find((c) => c.configKey === 'WEEK_START_DATE');
+        if (startConfig) {
+          this.weekStartDate = startConfig.configValue;
+        }
+      },
+      error: (err: any) => console.error('Error al cargar configuraciones:', err),
+    });
+  }
+
+  /**
+   * Updates the week start date configuration.
+   */
+  updateWeekStartDate() {
+    if (!this.weekStartDate) {
+      this.toastr.warning('Por favor seleccione una fecha');
+      return;
+    }
+
+    const config: AppConfig = {
+      configKey: 'WEEK_START_DATE',
+      configValue: this.weekStartDate,
+    };
+
+    this.configService.saveConfig(config).subscribe({
+      next: () => {
+        this.toastr.success('Fecha de inicio actualizada correctamente');
+        this.loadConfigs();
+      },
+      error: (err: any) => {
+        console.error('Error al guardar configuración:', err);
+        this.toastr.error('Error al guardar configuración');
+      },
+    });
   }
 
   /**

@@ -110,6 +110,13 @@
             >
               <i class="fas fa-eye"></i> Visibilidad GitHub
             </button>
+            <button
+              class="tab-btn"
+              [class.active]="activeAdminTab === 'config'"
+              (click)="activeAdminTab = 'config'"
+            >
+              <i class="fas fa-cog"></i> Configuración
+            </button>
           </div>
 
           <div class="tab-content" *ngIf="activeAdminTab === 'mappings'">
@@ -270,6 +277,43 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Config Tab -->
+          <div class="tab-content" *ngIf="activeAdminTab === 'config'">
+            <div class="config-section">
+              <h5><i class="fas fa-calendar-alt"></i> Fecha de Inicio de Ejercicios</h5>
+              <p class="helper-text">
+                Define desde qué fecha se empezarán a contar los ejercicios realizados por los competidores.
+              </p>
+
+              <div class="form-group-compact" style="max-width: 400px; margin-top: 1rem;">
+                <label>Fecha de Inicio (WEEK_START_DATE)</label>
+                <div class="input-wrapper">
+                  <input
+                    type="date"
+                    [(ngModel)]="weekStartDate"
+                    class="admin-input"
+                  />
+                  <i class="fas fa-calendar-day"></i>
+                </div>
+              </div>
+
+              <button
+                (click)="updateWeekStartDate()"
+                class="btn-primary"
+                style="margin-top: 1rem;"
+              >
+                <i class="fas fa-save"></i> Guardar Cambios
+              </button>
+
+              <hr style="margin: 2rem 0; border: 0; border-top: 1px solid var(--border-color);" />
+
+              <h5><i class="fas fa-broom"></i> Mantenimiento</h5>
+              <button (click)="clearLocalStorage()" class="btn-secondary" style="margin-top: 1rem;">
+                <i class="fas fa-trash-alt"></i> Limpiar Configuración Local (Tema/Caché)
+              </button>
             </div>
           </div>
         </div>

@@ -3,6 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../environments/environment';
 
+export interface AppConfig {
+  configKey: string;
+  configValue: string;
+}
+
 export interface UserMapping {
   folderName: string;
   githubNickname: string;
@@ -21,6 +26,18 @@ export class ConfigService {
   private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
+
+  getConfigs(): Observable<AppConfig[]> {
+    return this.http.get<AppConfig[]>(`${this.apiUrl}/configs`);
+  }
+
+  getConfig(key: string): Observable<AppConfig> {
+    return this.http.get<AppConfig>(`${this.apiUrl}/configs/${key}`);
+  }
+
+  saveConfig(config: AppConfig): Observable<AppConfig> {
+    return this.http.post<AppConfig>(`${this.apiUrl}/configs`, config);
+  }
 
   getMappings(): Observable<UserMapping[]> {
     return this.http.get<UserMapping[]>(`${this.apiUrl}/mappings`);
