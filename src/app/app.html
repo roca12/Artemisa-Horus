@@ -52,7 +52,7 @@
     <section>
       <h2><i class="fas fa-calendar-week"></i> Seguimiento Semanal de Ejercicios</h2>
       <p class="section-subtitle">
-        <strong>Semana {{ currentWeekNumber }}</strong> (desde el 20 de abril de 2026). Cada semana
+        <strong>Semana {{ currentWeekNumber }}</strong> (desde el {{ formattedStartDate }}). Cada semana
         se requieren <strong>{{ EXERCISES_PER_WEEK }}</strong> ejercicios nuevos. Acumulado
         requerido: <strong>{{ totalRequiredExercises }}</strong> ejercicios. Total general:
         <strong>{{ totalFiles }}</strong> archivos en
@@ -194,10 +194,19 @@
                       </h4>
                       <ul class="exercise-list">
                         <li *ngFor="let ex of folder.weeklyExercises[weekNum]" class="exercise-item">
-                          <span class="exercise-name">{{ ex.name }}</span>
-                          <span class="exercise-date"
-                            ><i class="far fa-clock"></i> {{ ex.date | date : 'dd/MM/yyyy HH:mm' }}</span
+                          <div class="exercise-info-group">
+                            <span class="exercise-name">{{ ex.name }}</span>
+                            <span class="exercise-date"
+                              ><i class="far fa-clock"></i> {{ ex.date | date : 'dd/MM/yyyy HH:mm' }}</span
+                            >
+                          </div>
+                          <button
+                            class="btn-view-code"
+                            (click)="viewCode(folder.folderName, ex.name); $event.stopPropagation()"
+                            title="Ver código fuente"
                           >
+                            <i class="fas fa-code"></i> Ver Código
+                          </button>
                         </li>
                       </ul>
                     </div>
@@ -265,4 +274,32 @@
     [folderToRealName]="folderToRealName"
     (closePanel)="toggleAdmin()"
   ></app-admin>
+
+  <!-- Modal de Visualización de Código -->
+  <div class="code-modal-backdrop" *ngIf="showCodeModal" (click)="closeCodeModal()">
+    <div class="code-modal-content" (click)="$event.stopPropagation()">
+      <div class="code-modal-header">
+        <div class="code-title">
+          <i class="fas fa-code"></i>
+          <h3>{{ selectedExerciseName }}</h3>
+        </div>
+        <button class="close-btn" (click)="closeCodeModal()">&times;</button>
+      </div>
+
+      <div class="code-modal-body">
+        <div *ngIf="loadingCode" class="code-loading">
+          <div class="spinner"></div>
+          <p>Cargando código desde GitHub...</p>
+        </div>
+
+        <div *ngIf="!loadingCode" class="code-container">
+          <textarea #codeEditor></textarea>
+        </div>
+      </div>
+
+      <div class="code-modal-footer">
+        <button class="btn-secondary" (click)="closeCodeModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
 </div>

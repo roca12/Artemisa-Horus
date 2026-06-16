@@ -117,6 +117,42 @@ export class GithubService {
     );
   }
 
+  getFileContent(path: string): Observable<GithubContent & { notFound?: boolean }> {
+    const encodedPath = path
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+
+    return this.http
+      .get<GithubContent>(
+        `${this.baseUrl}/${this.owner}/${this.repo}/contents/${encodedPath}`,
+        this.getHeaders(),
+      )
+      .pipe(
+        catchError((error: any) => {
+          if (error.status === 404) {
+            return of({
+              name: path.split('/').pop() || '',
+              path: path,
+              type: 'file',
+              url: '',
+              content: '',
+              notFound: true,
+            } as GithubContent & { notFound: boolean });
+          }
+          console.warn(`Error al cargar: ${path} (status: ${error.status})`, error);
+          return of({
+            name: path.split('/').pop() || '',
+            path: path,
+            type: 'file',
+            url: '',
+            content: '',
+            notFound: true,
+          } as GithubContent & { notFound: boolean });
+        }),
+      );
+  }
+
   getCollaborators(): Observable<GithubCollaborator[]> {
     return this.http.get<GithubCollaborator[]>(
       `${this.baseUrl}/${this.owner}/${this.repo}/collaborators`,

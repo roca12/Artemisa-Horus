@@ -1,9 +1,11 @@
-import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { GithubService, GithubTree, GithubTreeItem, GithubCommit } from './github.service';
 import { ConfigService, UserMapping, HiddenContributor, AppConfig } from './config.service';
 import { forkJoin, Subscription, interval, of } from 'rxjs';
-import { switchMap, catchError } from 'rxjs/operators';
+import { switchMap, catchError, finalize } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
+
+declare var CodeMirror: any;
 
 /**
  * Constantes globales de configuración de la aplicación.
@@ -113,7 +115,7 @@ export class App implements OnInit, OnDestroy {
   readonly EXERCISES_PER_WEEK = 3;
 
   /** Start date for counting exercises. */
-  weekStartDate = new Date(2026, 5, 1); // Default fallback: June 1, 2026
+  weekStartDate = new Date(2026, 3, 20); // Default fallback: April 20, 2026
 
   /** List of contributors in the analyzed folder (kept for admin compatibility). */
   contributorsInFolder: ContributorInfo[] = [];
@@ -131,12 +133,39 @@ export class App implements OnInit, OnDestroy {
   pageSize = 10;
 
   /** Column currently used for sorting. */
-  sortColumn: keyof FolderFileCount | '' = '';
+  sortColumn: keyof FolderFileCount | '' = 'missingExercises';
 
   /** Sort direction. */
   sortDirection: 'asc' | 'desc' = 'asc';
 
+  /** Code Viewer State */
+  selectedExerciseCode: string | null = null;
+  selectedExerciseName: string | null = null;
+  loadingCode = false;
+  showCodeModal = false;
+
+  @ViewChild('codeEditor') set codeEditor(element: ElementRef) {
+    if (element) {
+      this.codeEditorElement = element;
+      console.log('codeEditorElement capturado vía setter');
+      // Usamos un pequeño delay para asegurar que el DOM esté listo y Angular haya procesado el valor
+      setTimeout(() => {
+        this.initCodeMirror();
+        // Forzar un evento de resize global para ayudar a CodeMirror a recalcular
+        window.dispatchEvent(new Event('resize'));
+
+        // Segundo intento de resize para asegurar que el modal se haya estabilizado
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+        }, 300);
+      }, 50);
+    }
+  }
+  codeEditorElement!: ElementRef;
+  private codeMirrorInstance: any;
+
   private refreshSubscription?: Subscription;
+  private codeSubscription?: Subscription;
 
   /**
    * Returns the filtered, sorted and paginated folder file counts for the table.
@@ -156,24 +185,31 @@ export class App implements OnInit, OnDestroy {
     }
 
     // Sort
-    if (this.sortColumn) {
-      const col = this.sortColumn;
-      const dir = this.sortDirection === 'asc' ? 1 : -1;
-      data = [...data].sort((a, b) => {
-        const aVal = a[col];
-        const bVal = b[col];
-        if (typeof aVal === 'string' && typeof bVal === 'string') {
-          return aVal.localeCompare(bVal) * dir;
-        }
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          return (aVal - bVal) * dir;
-        }
-        if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
-          return (aVal === bVal ? 0 : aVal ? 1 : -1) * dir;
-        }
-        return 0;
-      });
-    }
+    const col = this.sortColumn || 'missingExercises';
+    const dir = this.sortDirection === 'asc' ? 1 : -1;
+
+    data = [...data].sort((a, b) => {
+      // Regla: Los que cumplieron meta (isGoalMet) siempre al principio
+      if (a.isGoalMet !== b.isGoalMet) {
+        return a.isGoalMet ? -1 : 1;
+      }
+
+      // Dentro de cada grupo (cumplieron meta vs no), aplicar el criterio de ordenamiento seleccionado
+      const aVal = a[col];
+      const bVal = b[col];
+
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        const res = aVal.localeCompare(bVal);
+        if (res !== 0) return res * dir;
+      } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+        if (aVal !== bVal) return (aVal - bVal) * dir;
+      } else if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+        if (aVal !== bVal) return (aVal === bVal ? 0 : aVal ? 1 : -1) * dir;
+      }
+
+      // Criterio de desempate por defecto si la columna no es fileCount
+      return b.fileCount - a.fileCount;
+    });
 
     return data;
   }
@@ -207,6 +243,17 @@ export class App implements OnInit, OnDestroy {
     const formatDate = (d: Date) =>
       d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
     return `${formatDate(start)} - ${formatDate(end)}`;
+  }
+
+  /**
+   * Returns the formatted start date for display.
+   */
+  get formattedStartDate(): string {
+    return this.weekStartDate.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   }
 
   /** Total pages based on filtered data. */
@@ -351,11 +398,190 @@ export class App implements OnInit, OnDestroy {
   }
 
   /**
+   * Opens the code viewer for a specific exercise.
+   */
+  viewCode(folderName: string, fileName: string) {
+    console.log(`[ViewCode] Cargando: ${folderName}/${fileName}`);
+    this.selectedExerciseName = fileName;
+    this.selectedExerciseCode = null;
+    this.loadingCode = true;
+    this.showCodeModal = true;
+
+    // Aseguramos que el textarea se limpie antes de cargar el nuevo contenido
+    try {
+      if (this.codeMirrorInstance) {
+        if (typeof this.codeMirrorInstance.toTextArea === 'function') {
+          this.codeMirrorInstance.toTextArea();
+        }
+        this.codeMirrorInstance = null;
+      }
+    } catch (e) {
+      console.warn('[ViewCode] Error al limpiar CodeMirror:', e);
+      this.codeMirrorInstance = null;
+    }
+
+    const fullPath = `Resueltos_por_competidor/${folderName}/${fileName}`;
+    console.log(`[ViewCode] Ruta completa: ${fullPath}`);
+
+    if (this.codeSubscription) {
+      this.codeSubscription.unsubscribe();
+    }
+
+    this.codeSubscription = this.githubService
+      .getFileContent(fullPath)
+      .pipe(
+        finalize(() => {
+          this.loadingCode = false;
+          console.log('[ViewCode] Carga finalizada (loadingCode = false)');
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (content) => {
+          console.log('[ViewCode] Respuesta recibida de GitHub');
+          if (content && content.content) {
+            try {
+              // GitHub content is usually base64 encoded
+              // Eliminamos TODOS los caracteres no válidos para Base64 antes de decodificar
+              const base64Data = content.content.replace(/\s/g, '');
+              const decoded = atob(base64Data);
+              const bytes = new Uint8Array(decoded.length);
+              for (let i = 0; i < decoded.length; i++) {
+                bytes[i] = decoded.charCodeAt(i);
+              }
+              this.selectedExerciseCode = new TextDecoder('utf-8').decode(bytes);
+              console.log(
+                '[ViewCode] Código decodificado correctamente, longitud:',
+                this.selectedExerciseCode.length,
+              );
+            } catch (e) {
+              console.error('[ViewCode] Error al decodificar contenido:', e);
+              this.selectedExerciseCode = 'Error al decodificar el contenido del archivo.';
+            }
+          } else if (content && content.notFound) {
+            console.log('[ViewCode] Archivo no encontrado');
+            this.selectedExerciseCode = '// El archivo no fue encontrado en GitHub.';
+          } else {
+            console.log('[ViewCode] Contenido vacío o formato inesperado');
+            this.selectedExerciseCode =
+              '// No se pudo obtener el contenido del archivo o está vacío.';
+          }
+        },
+        error: (err) => {
+          console.error('[ViewCode] Error en suscripción:', err);
+          this.selectedExerciseCode = '// Error al conectar con GitHub para obtener el código.';
+          this.toastr.error('Error al cargar el código del ejercicio');
+        },
+      });
+  }
+
+  /**
+   * Initializes or updates the CodeMirror instance.
+   */
+  private initCodeMirror() {
+    console.log(`Iniciando CodeMirror...`);
+    if (!this.codeEditorElement) {
+      console.warn('codeEditorElement no disponible para initCodeMirror');
+      return;
+    }
+
+    const extension = this.selectedExerciseName?.split('.').pop()?.toLowerCase();
+    let mode = 'clike'; // Default for C/C++/Java
+    if (extension === 'py') mode = 'python';
+    else if (extension === 'js') mode = 'javascript';
+    else if (extension === 'java') mode = 'text/x-java';
+    else if (extension === 'cpp' || extension === 'cc' || extension === 'c') mode = 'text/x-c++src';
+
+    console.log(`Modo detectado: ${mode} para extensión: ${extension}`);
+
+    try {
+      const textarea = this.codeEditorElement.nativeElement;
+      if (!textarea) {
+        console.error('Textarea para CodeMirror no encontrado en nativeElement');
+        return;
+      }
+
+      if (this.codeMirrorInstance) {
+        console.log('Actualizando instancia existente de CodeMirror');
+        this.codeMirrorInstance.setValue(this.selectedExerciseCode || '');
+        this.codeMirrorInstance.setOption('mode', mode);
+        this.codeMirrorInstance.setOption('theme', this.isDarkMode() ? 'monokai' : 'default');
+      } else {
+        console.log('Creando nueva instancia de CodeMirror');
+        this.codeMirrorInstance = CodeMirror.fromTextArea(textarea, {
+          lineNumbers: true,
+          mode: mode,
+          theme: this.isDarkMode() ? 'monokai' : 'default',
+          readOnly: true,
+          lineWrapping: true,
+          viewportMargin: Infinity
+        });
+
+        // Forzamos el valor directamente en la instancia
+        if (this.selectedExerciseCode) {
+          console.log('Estableciendo valor en CodeMirror...');
+          this.codeMirrorInstance.setValue(this.selectedExerciseCode);
+        }
+      }
+
+      // Enfocar automáticamente el editor para forzar el renderizado de la línea actual
+      this.codeMirrorInstance.focus();
+
+      // Forzar múltiples refrescos para asegurar la visibilidad
+      // El primer refresco es inmediato
+      this.codeMirrorInstance.refresh();
+
+      // Refrescos subsiguientes para manejar animaciones o delays de renderizado
+      setTimeout(() => {
+        if (this.codeMirrorInstance) {
+          console.log('Refrescando CodeMirror (100ms)');
+          this.codeMirrorInstance.refresh();
+        }
+      }, 100);
+
+      setTimeout(() => {
+        if (this.codeMirrorInstance) {
+          console.log('Refrescando CodeMirror (500ms)');
+          this.codeMirrorInstance.refresh();
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Error al gestionar instancia de CodeMirror:', err);
+    }
+  }
+
+  /**
+   * Closes the code viewer modal and resets its state.
+   */
+  closeCodeModal() {
+    if (this.codeSubscription) {
+      this.codeSubscription.unsubscribe();
+    }
+    this.showCodeModal = false;
+    this.selectedExerciseCode = null;
+    this.selectedExerciseName = null;
+    try {
+      if (this.codeMirrorInstance) {
+        if (typeof this.codeMirrorInstance.toTextArea === 'function') {
+          this.codeMirrorInstance.toTextArea();
+        }
+        this.codeMirrorInstance = null;
+      }
+    } catch (e) {
+      console.warn('[CloseCodeModal] Error al limpiar CodeMirror:', e);
+      this.codeMirrorInstance = null;
+    }
+  }
+
+  /**
    * Lifecycle hook that cleans up subscriptions when the component is destroyed.
    */
   ngOnDestroy() {
     if (this.refreshSubscription) {
       this.refreshSubscription.unsubscribe();
+    }
+    if (this.codeSubscription) {
+      this.codeSubscription.unsubscribe();
     }
   }
 
@@ -655,7 +881,15 @@ export class App implements OnInit, OnDestroy {
           weeklyExercises,
         };
       })
-      .sort((a, b) => b.fileCount - a.fileCount);
+      .sort((a, b) => {
+        if (a.isGoalMet !== b.isGoalMet) {
+          return a.isGoalMet ? -1 : 1;
+        }
+        if (a.missingExercises !== b.missingExercises) {
+          return a.missingExercises - b.missingExercises;
+        }
+        return b.fileCount - a.fileCount;
+      });
 
     this.totalFiles = this.folderFileCounts.reduce((sum, f) => sum + f.fileCount, 0);
 

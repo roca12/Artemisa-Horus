@@ -1067,32 +1067,145 @@ tr:hover td {
   color: var(--danger-color);
 }
 
-.modal-body {
-  padding: 0; /* CodeMirror maneja su propio padding */
-  overflow: hidden; /* El scroll lo maneja CodeMirror */
-  min-height: 200px;
-  background-color: #1e1e1e;
-  border-bottom-left-radius: var(--border-radius);
-  border-bottom-right-radius: var(--border-radius);
+/* Estilos para el visor de código */
+.btn-view-code {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
 }
 
-.editor-container {
-  height: 100%;
+.btn-view-code:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.exercise-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.code-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
 }
 
+.code-modal-content {
+  background-color: var(--card-background);
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-hover);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.code-modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.code-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-color);
+}
+
+.code-title h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.code-modal-body {
+  flex: 1;
+  overflow: hidden;
+  background-color: #1e1e1e;
+  position: relative;
+  min-height: 400px;
+}
+
+.code-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #d4d4d4;
+}
+
+.code-container {
+  height: 100%;
+}
+
+.code-modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Reutilizar clases existentes si coinciden */
 .CodeMirror {
-  height: 60vh !important;
+  height: 70vh !important;
   font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace !important;
   font-size: 14px !important;
 }
 
-.modal-loading {
-  padding: 3rem;
-  text-align: center;
-  font-size: 1.2rem;
-  color: #d4d4d4;
+/* Estilos para que el visor se adapte al tema */
+body.dark-theme .code-modal-content {
+  background-color: #1e1e1e;
 }
+
+body.dark-theme .code-modal-header,
+body.dark-theme .code-modal-footer {
+  background-color: #252525;
+}
+
+.exercise-info-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Reemplazar bloque anterior de CodeMirror si existía */
 
 .modal-footer {
   padding: 1rem 2rem;
