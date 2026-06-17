@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, switchMap } from 'rxjs/operators';
 import { environment } from '../environments/environment';
 
 export interface GithubCommit {
@@ -180,14 +180,33 @@ export class GithubService {
   }
 
   /**
-   * Obtiene la lista de colaboradores del repositorio.
-   * @returns Observable con la lista de colaboradores.
+   * Obtiene la lista de todos los colaboradores del repositorio usando paginación.
+   * @param page Número de página a solicitar.
+   * @param allCollaborators Acumulador de colaboradores.
+   * @returns Observable con la lista completa de colaboradores.
    */
-  getCollaborators(): Observable<GithubCollaborator[]> {
-    return this.http.get<GithubCollaborator[]>(
-      `${this.baseUrl}/${this.owner}/${this.repo}/collaborators`,
-      this.getHeaders(),
-    );
+  getCollaborators(
+    page = 1,
+    allCollaborators: GithubCollaborator[] = [],
+  ): Observable<GithubCollaborator[]> {
+    return this.http
+      .get<GithubCollaborator[]>(
+        `${this.baseUrl}/${this.owner}/${this.repo}/collaborators?per_page=100&page=${page}`,
+        this.getHeaders(),
+      )
+      .pipe(
+        switchMap((collaborators) => {
+          const updatedList = [...allCollaborators, ...collaborators];
+          if (collaborators.length === 100) {
+            return this.getCollaborators(page + 1, updatedList);
+          }
+          return of(updatedList);
+        }),
+        catchError((error) => {
+          console.error(`Error al obtener colaboradores (página ${page}):`, error);
+          return of(allCollaborators);
+        }),
+      );
   }
 
   /**
