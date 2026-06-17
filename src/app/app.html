@@ -56,7 +56,7 @@
         semana se requieren <strong>{{ EXERCISES_PER_WEEK }}</strong> ejercicios nuevos. Acumulado
         requerido: <strong>{{ totalRequiredExercises }}</strong> ejercicios. Total general:
         <strong>{{ totalFiles }}</strong> archivos en
-        <strong>{{ folderFileCounts.length }}</strong> carpetas.
+        <strong>{{ totalVisibleFolders }}</strong> carpetas.
       </p>
 
       <div class="table-controls" *ngIf="folderFileCounts.length > 0">
@@ -278,6 +278,7 @@
   <app-admin
     *ngIf="showAdmin"
     [contributorsInFolder]="contributorsInFolder"
+    [totalRequiredExercises]="totalRequiredExercises"
     [githubToReal]="githubToReal"
     [folderToRealName]="folderToRealName"
     (closePanel)="toggleAdmin()"
