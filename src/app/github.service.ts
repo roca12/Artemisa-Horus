@@ -190,10 +190,9 @@ export class GithubService {
     allCollaborators: GithubCollaborator[] = [],
   ): Observable<GithubCollaborator[]> {
     return this.http
-      .get<GithubCollaborator[]>(
-        `${this.baseUrl}/${this.owner}/${this.repo}/collaborators?per_page=100&page=${page}`,
-        this.getHeaders(),
-      )
+      .get<
+        GithubCollaborator[]
+      >(`${this.baseUrl}/${this.owner}/${this.repo}/collaborators?per_page=100&page=${page}`, this.getHeaders())
       .pipe(
         switchMap((collaborators) => {
           const updatedList = [...allCollaborators, ...collaborators];
