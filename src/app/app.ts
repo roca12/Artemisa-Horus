@@ -36,10 +36,6 @@ const APP_CONFIG = {
     'github-copilot',
     'azure-pipelines-bot',
     'github-actions[bot]',
-    'roca12',
-    'anfeespi',
-    'exiic',
-    'DiegoF1311',
   ],
   AUTO_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutos
 };
@@ -183,7 +179,7 @@ export class App implements OnInit, OnDestroy {
    * Returns the filtered, sorted and paginated folder file counts for the table.
    */
   get filteredFolderFileCounts(): FolderFileCount[] {
-    let data = this.folderFileCounts;
+    let data = this.folderFileCounts.filter((f) => !this.isFolderHidden(f.folderName));
 
     // Filter
     if (this.filterText.trim()) {
@@ -277,6 +273,11 @@ export class App implements OnInit, OnDestroy {
       month: 'long',
       year: 'numeric',
     });
+  }
+
+  /** Returns the total number of visible folders (not hidden). */
+  get totalVisibleFolders(): number {
+    return this.folderFileCounts.filter((f) => !this.isFolderHidden(f.folderName)).length;
   }
 
   /** Total pages based on filtered data. */
@@ -825,6 +826,19 @@ export class App implements OnInit, OnDestroy {
   }
 
   /**
+   * Checks if a folder or its associated user is hidden.
+   * @param folderName The name of the folder.
+   * @returns True if hidden, false otherwise.
+   */
+  private isFolderHidden(folderName: string): boolean {
+    const githubNickname = this.folderToGithub[folderName.toLowerCase()] || folderName;
+    return (
+      this.hiddenContributors.includes(`USER:${githubNickname}`.toUpperCase()) ||
+      this.hiddenContributors.includes(`FOLDER:${folderName}`.toUpperCase())
+    );
+  }
+
+  /**
    * Processes the repository tree to count files per folder under "Resueltos_por_competidor".
    * Subfolders are counted as part of their parent folder.
    * Calculates weekly debt per folder, applying the weekly cap restriction.
@@ -848,15 +862,6 @@ export class App implements OnInit, OnDestroy {
       const folderName = relativePath.substring(0, slashIndex);
       const fileName = relativePath.substring(slashIndex + 1);
       if (!fileName || fileName.includes('/')) return; // Solo archivos directos en la carpeta del competidor
-
-      // Verificar si la carpeta o su dueño están ocultos
-      const githubNickname = this.folderToGithub[folderName.toLowerCase()] || folderName;
-      if (
-        this.hiddenContributors.includes(`USER:${githubNickname}`.toUpperCase()) ||
-        this.hiddenContributors.includes(`FOLDER:${folderName}`.toUpperCase())
-      ) {
-        return;
-      }
 
       if (!folderFiles[folderName]) folderFiles[folderName] = new Set();
       folderFiles[folderName].add(fileName);
@@ -914,7 +919,9 @@ export class App implements OnInit, OnDestroy {
         return b.fileCount - a.fileCount;
       });
 
-    this.totalFiles = this.folderFileCounts.reduce((sum, f) => sum + f.fileCount, 0);
+    this.totalFiles = this.folderFileCounts
+      .filter((f) => !this.isFolderHidden(f.folderName))
+      .reduce((sum, f) => sum + f.fileCount, 0);
 
     // Generar contributorsInFolder para compatibilidad con el admin panel
     this.contributorsInFolder = this.folderFileCounts.map((f) => {

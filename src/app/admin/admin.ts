@@ -46,6 +46,9 @@ export class Admin implements OnInit {
   /** Mapping of folder names to real names. */
   @Input() folderToRealName: { [folderName: string]: string } = {};
 
+  /** Total number of exercises required up to the current week. */
+  @Input() totalRequiredExercises = 0;
+
   /** Mapping of folder names to github nicknames. */
   folderToGithub: { [folderName: string]: string } = {};
 
@@ -101,6 +104,74 @@ export class Admin implements OnInit {
       const bMapped = this.isNicknameMapped(b.login);
       if (aMapped === bMapped) return a.login.localeCompare(b.login);
       return aMapped ? 1 : -1;
+    });
+  });
+
+  /** List of all contributors for the report, merging GitHub data with folder stats. */
+  allContributorsForReport = computed(() => {
+    const inFolder = this.contributorsInFolder;
+    const fromGithub = this.contributors();
+    const mappings = this.mappings();
+    const hidden = this.hiddenContributors();
+
+    // Logins that are always hidden (bots)
+    const alwaysHidden = [
+      'github-copilot[bot]',
+      'copilot',
+      'github-copilot',
+      'azure-pipelines-bot',
+      'github-actions[bot]',
+    ].map((l) => l.toUpperCase());
+
+    // Helper: check if a contributor should be hidden in the report
+    const shouldHide = (login: string, isFolder: boolean) => {
+      const loginUpper = login.toUpperCase();
+      if (alwaysHidden.includes(loginUpper)) return true;
+
+      if (isFolder) {
+        const mapping = mappings.find((m) => m.folderName.toLowerCase() === login.toLowerCase());
+        const githubNickname = mapping ? mapping.githubNickname : login;
+        return (
+          hidden.includes(`FOLDER:${loginUpper}`) ||
+          hidden.includes(`USER:${githubNickname.toUpperCase()}`)
+        );
+      }
+      return hidden.includes(`USER:${loginUpper}`);
+    };
+
+    const filteredInFolder = inFolder.filter((c) => !shouldHide(c.login, true));
+
+    // Create a set of github nicknames that already have folders (based on mappings)
+    const mappedGithubNicknames = new Set<string>();
+    filteredInFolder.forEach((c) => {
+      const mapping = mappings.find((m) => m.folderName.toLowerCase() === c.login.toLowerCase());
+      if (mapping) {
+        mappedGithubNicknames.add(mapping.githubNickname.toLowerCase());
+      } else {
+        // If not mapped, we assume the folder name might be the login
+        mappedGithubNicknames.add(c.login.toLowerCase());
+      }
+    });
+
+    const additional: ContributorInfo[] = fromGithub
+      .filter((g) => !mappedGithubNicknames.has(g.login.toLowerCase()))
+      .filter((g) => !shouldHide(g.login, false))
+      .map((g) => ({
+        login: g.login,
+        avatarUrl: g.avatar_url,
+        totalFiles: 0,
+        weeklyStats: [],
+        totalDebt: this.totalRequiredExercises,
+        isCurrentGoalMet: this.totalRequiredExercises === 0,
+        totalDocumented: 0,
+        totalUndocumented: 0,
+      }));
+
+    return [...filteredInFolder, ...additional].sort((a, b) => {
+      if (a.isCurrentGoalMet !== b.isCurrentGoalMet) {
+        return a.isCurrentGoalMet ? -1 : 1;
+      }
+      return b.totalFiles - a.totalFiles;
     });
   });
 
@@ -237,17 +308,12 @@ export class Admin implements OnInit {
       'github-copilot',
       'azure-pipelines-bot',
       'github-actions[bot]',
-      'roca12',
-      'anfeespi',
-      'exiic',
-      'DiegoF1311',
     ];
     this.githubService.getCollaborators().subscribe({
       next: (data: GithubCollaborator[]) => {
-        // Filter those with push permissions and not bots/excluded
+        // Filter out bots and excluded users
         const filtered = data.filter(
           (c: GithubCollaborator) =>
-            c.permissions?.push &&
             !excludedLogins.includes(c.login) &&
             !(c.login && c.login.toLowerCase().includes('copilot')),
         );
@@ -283,7 +349,7 @@ export class Admin implements OnInit {
   loadHidden() {
     this.configService.getHidden().subscribe({
       next: (data: HiddenContributor[]) =>
-        this.hiddenContributors.set(data.map((h) => `${h.entityType}:${h.entityId}`)),
+        this.hiddenContributors.set(data.map((h) => `${h.entityType}:${h.entityId}`.toUpperCase())),
       error: (err: HttpErrorResponse) => console.error('Error al cargar entidades ocultas:', err),
     });
   }
@@ -297,7 +363,7 @@ export class Admin implements OnInit {
     const current = this.hiddenContributors();
     const type = isFolder ? 'FOLDER' : 'USER';
     const typeLabel = isFolder ? 'Carpeta' : 'Colaborador';
-    const compositeId = `${type}:${id}`;
+    const compositeId = `${type}:${id}`.toUpperCase();
 
     if (current.includes(compositeId)) {
       this.configService.deleteHidden(id).subscribe({
@@ -331,7 +397,7 @@ export class Admin implements OnInit {
    */
   isHidden(id: string, isFolder = false): boolean {
     const type = isFolder ? 'FOLDER' : 'USER';
-    return this.hiddenContributors().includes(`${type}:${id}`);
+    return this.hiddenContributors().includes(`${type}:${id}`.toUpperCase());
   }
 
   /**
@@ -574,6 +640,20 @@ export class Admin implements OnInit {
       scale: 2,
       useCORS: true,
       logging: false,
+      width: element.offsetWidth,
+      height: element.offsetHeight,
+      windowWidth: element.offsetWidth,
+      windowHeight: element.offsetHeight,
+      onclone: (clonedDoc) => {
+        const report = clonedDoc.querySelector('.report-export-container') as HTMLElement;
+        if (report) {
+          report.style.position = 'static';
+          report.style.left = '0';
+          report.style.top = '0';
+          report.style.visibility = 'visible';
+          report.style.display = 'block';
+        }
+      },
     })
       .then((canvas) => {
         const link = document.createElement('a');

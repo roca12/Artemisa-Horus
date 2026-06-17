@@ -364,7 +364,7 @@
           </thead>
           <tbody>
             <tr
-              *ngFor="let c of contributorsInFolder; let i = index"
+              *ngFor="let c of allContributorsForReport(); let i = index"
               [class.report-row-ok]="c.isCurrentGoalMet"
               [class.report-row-debt]="!c.isCurrentGoalMet"
             >
