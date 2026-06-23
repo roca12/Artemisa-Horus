@@ -3,38 +3,38 @@
 }
 
 :root {
-  --primary-color: #2c3e50;
-  --primary-dark: #1a252f;
-  --secondary-color: #34495e;
-  --accent-color: #3498db;
-  --accent-hover: #2980b9;
+  --primary-color: #FCD116; /* Amarillo Colombia */
+  --primary-dark: #E5BE14;
+  --secondary-color: #003893; /* Azul Colombia */
+  --accent-color: #CE1126; /* Rojo Colombia */
+  --accent-hover: #A50E1F;
   --success-color: #27ae60;
-  --danger-color: #e74c3c;
-  --warning-color: #f39c12;
+  --danger-color: #CE1126;
+  --warning-color: #FCD116;
   --background-color: #f0f2f5;
   --card-background: #ffffff;
-  --text-color: #2c3e50;
-  --text-muted: #6c757d;
+  --text-color: #1a1a1a;
+  --text-muted: #4a4a4a;
   --border-radius: 12px;
   --border-color: #dee2e6;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --header-text: #ffffff;
+  --header-text: #003893;
   --tab-header-bg: #f8f9fa;
   --tab-btn-hover: #f1f3f5;
   --badge-bg: #e9ecef;
   --card-alt-bg: #f8f9fa;
   --stat-item-bg: #ffffff;
-  --card-active-bg: #e3f2fd;
-  --card-active-border: #3498db;
+  --card-active-bg: #fff9db;
+  --card-active-border: #FCD116;
 }
 
 body.dark-theme {
-  --primary-color: #ecf0f1;
-  --primary-dark: #2c3e50;
-  --secondary-color: #bdc3c7;
-  --accent-color: #3498db;
-  --accent-hover: #5dade2;
+  --primary-color: #FCD116;
+  --primary-dark: #CE1126;
+  --secondary-color: #003893;
+  --accent-color: #FCD116;
+  --accent-hover: #E5BE14;
   --success-color: #2ecc71;
   --danger-color: #ff5252;
   --warning-color: #f1c40f;
@@ -51,8 +51,8 @@ body.dark-theme {
   --badge-bg: #333333;
   --card-alt-bg: #252525;
   --stat-item-bg: #2c2c2c;
-  --card-active-bg: #1a2a3a;
-  --card-active-border: #3498db;
+  --card-active-bg: #2a2a1a;
+  --card-active-border: #FCD116;
 }
 
 body {
@@ -71,7 +71,7 @@ body {
 }
 
 header {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, #FCD116 0%, #003893 50%, #CE1126 100%);
   color: var(--header-text);
   padding: 4rem 2rem;
   border-radius: var(--border-radius);
@@ -183,6 +183,10 @@ header p {
   font-size: 1.1rem;
   opacity: 0.9;
   margin: 0;
+}
+
+body.dark-theme header {
+  background: linear-gradient(135deg, #E5BE14 0%, #002D7A 50%, #A50E1F 100%);
 }
 
 .repo-banner {
